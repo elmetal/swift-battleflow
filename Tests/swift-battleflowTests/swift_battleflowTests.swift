@@ -51,6 +51,34 @@ func testStatsHPChange() async throws {
     #expect(overhealedStats.hp == 100)
 }
 
+@Test("BattleState derived collections and updates")
+func testBattleStateDerivedCollections() async throws {
+    let alivePlayer = BattleFlow.createCharacter(name: "Hero", hp: 80, isPlayer: true)
+    let defeatedPlayer = BattleFlow.createCharacter(name: "Knight", hp: 0, maxHP: 80, isPlayer: true)
+    let aliveEnemy = BattleFlow.createCharacter(name: "Goblin", hp: 40, isPlayer: false)
+    let defeatedEnemy = BattleFlow.createCharacter(name: "Orc", hp: 0, maxHP: 120, isPlayer: false)
+
+    let state = BattleState(
+        phase: .turnSelection,
+        combatants: [
+            alivePlayer.id: alivePlayer,
+            defeatedPlayer.id: defeatedPlayer,
+            aliveEnemy.id: aliveEnemy,
+            defeatedEnemy.id: defeatedEnemy
+        ],
+        playerCombatants: [alivePlayer.id, defeatedPlayer.id],
+        enemyCombatants: [aliveEnemy.id, defeatedEnemy.id]
+    )
+
+    #expect(Set(state.alivePlayers.map(\.id)) == Set([alivePlayer.id]))
+    #expect(Set(state.aliveEnemies.map(\.id)) == Set([aliveEnemy.id]))
+
+    let healedState = state.withCombatant(defeatedPlayer.withStats(defeatedPlayer.stats.withHP(50)))
+    #expect(healedState.alivePlayers.contains { $0.id == defeatedPlayer.id })
+    #expect(healedState.phase == state.phase)
+    #expect(healedState.turnCount == state.turnCount)
+}
+
 // MARK: - BattleAction Tests
 
 @Test("BattleAction metadata properties")
@@ -96,6 +124,21 @@ func testReducerStartBattle() async throws {
     #expect(effects.isEmpty == false)
 }
 
+@Test("Reducer handles advance turn and phase change")
+func testReducerAdvanceTurnAndPhase() async throws {
+    let reducer = BattleReducer()
+    let state = BattleState(phase: .turnSelection, turnCount: 3, currentActor: CombatantID("hero"))
+
+    let (turnAdvancedState, turnEffects) = reducer.reduce(state: state, action: .advanceTurn)
+    #expect(turnAdvancedState.turnCount == 4)
+    #expect(turnAdvancedState.currentActor == nil)
+    #expect(turnEffects.contains { ($0 as? BaseEffect)?.id == "turn_advance" })
+
+    let (phaseAdvancedState, phaseEffects) = reducer.reduce(state: state, action: .advancePhase(.actionExecution))
+    #expect(phaseAdvancedState.phase == .actionExecution)
+    #expect(phaseEffects.contains { ($0 as? BaseEffect)?.id == "phase_transition_actionExecution" })
+}
+
 @Test("Reducer handles attack action")
 func testReducerAttack() async throws {
     let reducer = BattleReducer()
@@ -121,7 +164,7 @@ func testReducerAttack() async throws {
 @Test("Reducer handles HP change action")
 func testReducerChangeHP() async throws {
     let reducer = BattleReducer()
-    
+
     let hero = BattleFlow.createCharacter(name: "Hero", hp: 50, maxHP: 100, isPlayer: true)
     let state = BattleState(
         combatants: [hero.id: hero],
@@ -139,6 +182,31 @@ func testReducerChangeHP() async throws {
     let (damagedState, _) = reducer.reduce(state: healedState, action: damageAction)
     let damagedHero = damagedState.combatants[hero.id]!
     #expect(damagedHero.stats.hp == 60)  // 80 - 20 = 60
+}
+
+@Test("Reducer clamps MP changes and handles escape")
+func testReducerMPChangeAndEscape() async throws {
+    let reducer = BattleReducer()
+
+    let hero = BattleFlow.createCharacter(name: "Mage", mp: 30, maxMP: 40, isPlayer: true)
+    let state = BattleState(
+        phase: .actionExecution,
+        combatants: [hero.id: hero],
+        playerCombatants: [hero.id],
+        enemyCombatants: []
+    )
+
+    let (mpIncreasedState, _) = reducer.reduce(state: state, action: .changeMP(target: hero.id, amount: 20))
+    let increasedHero = mpIncreasedState.combatants[hero.id]!
+    #expect(increasedHero.stats.mp == 40)
+
+    let (mpDepletedState, _) = reducer.reduce(state: mpIncreasedState, action: .changeMP(target: hero.id, amount: -100))
+    let depletedHero = mpDepletedState.combatants[hero.id]!
+    #expect(depletedHero.stats.mp == 0)
+
+    let (escapeState, escapeEffects) = reducer.reduce(state: state, action: .escape(escaper: hero.id))
+    #expect(escapeState.phase == .escape)
+    #expect(escapeEffects.contains { ($0 as? BaseEffect)?.id == "escape_success" })
 }
 
 // MARK: - BattleStore Tests
