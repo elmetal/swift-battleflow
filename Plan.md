@@ -33,11 +33,6 @@ JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。
 - [ ] `Character` - プレイヤーキャラクター
 - [ ] `Enemy` - 敵キャラクター
 
-#### 2.2 スキル・アビリティシステム
-- [ ] `Skill` - スキル/技の定義
-- [ ] `SkillEffect` - スキル効果の計算
-- [ ] `TargetSelector` - ターゲット選択ロジック
-
 ### フェーズ 3: ターンベース戦闘ロジック (部分完了)
 #### 3.1 ターン管理
 - [ ] `TurnOrder` - 行動順序の計算
@@ -111,10 +106,6 @@ Sources/swift-battleflow/
 │   ├── Character.swift
 │   ├── Enemy.swift
 │   └── Stats.swift
-├── Skills/
-│   ├── Skill.swift
-│   ├── SkillEffect.swift
-│   └── TargetSelector.swift
 ├── Turn/
 │   ├── TurnOrder.swift
 │   ├── TurnPhase.swift
@@ -155,7 +146,7 @@ Sources/swift-battleflow/
 - **フェーズ6: テストとバリデーション** - 80%完了 (主要テスト完了)
 
 ## 次のステップ
-1. **フェーズ2の完成**: Character/Enemy差別化、スキルシステム
+1. **フェーズ2の完成**: Character/Enemy差別化
 2. **フェーズ3の拡張**: TurnOrder、AI行動決定
 3. **フェーズ5**: 状態異常システム、アイテムシステム
 4. **フェーズ7**: API documentation、サンプルアプリ
