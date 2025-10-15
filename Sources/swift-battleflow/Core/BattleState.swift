@@ -1,26 +1,26 @@
 import Foundation
 
-/// 戦闘の現在フェーズを表現
+/// Represents the current phase of a battle sequence.
 public enum BattlePhase: Sendable, Equatable {
-    case preparation    // 戦闘準備
-    case turnSelection  // ターン選択
-    case actionExecution // アクション実行
-    case effectResolution // エフェクト解決
-    case victory       // 勝利
-    case defeat        // 敗北
-    case escape        // 逃走
+    case preparation    // Battle setup.
+    case turnSelection  // Choosing the next actor.
+    case actionExecution // Resolving chosen actions.
+    case effectResolution // Processing pending effects.
+    case victory       // Players succeed.
+    case defeat        // Players lose.
+    case escape        // Battle ends by escape.
 }
 
-/// 戦闘参加者の基本情報
+/// Identifies a combatant participating in the battle.
 public struct CombatantID: Hashable, Sendable {
     public let value: String
-    
+
     public init(_ value: String) {
         self.value = value
     }
 }
 
-/// 基本ステータス
+/// Captures the core stats used for battle calculations.
 public struct Stats: Sendable, Equatable {
     public let hp: Int
     public let maxHP: Int
@@ -48,12 +48,12 @@ public struct Stats: Sendable, Equatable {
         self.speed = speed
     }
     
-    /// HPが0以下かどうか
+    /// Indicates whether the combatant has been defeated.
     public var isDefeated: Bool {
         return hp <= 0
     }
-    
-    /// HPを変更した新しいStatsを返す
+
+    /// Returns a copy of the stats with updated hit points.
     public func withHP(_ newHP: Int) -> Stats {
         Stats(
             hp: max(0, min(newHP, maxHP)),
@@ -66,7 +66,7 @@ public struct Stats: Sendable, Equatable {
         )
     }
     
-    /// MPを変更した新しいStatsを返す
+    /// Returns a copy of the stats with updated magic points.
     public func withMP(_ newMP: Int) -> Stats {
         Stats(
             hp: hp,
@@ -80,7 +80,7 @@ public struct Stats: Sendable, Equatable {
     }
 }
 
-/// 戦闘参加者
+/// Describes a participant in the battle.
 public struct Combatant: Sendable, Equatable {
     public let id: CombatantID
     public let name: String
@@ -99,7 +99,7 @@ public struct Combatant: Sendable, Equatable {
         self.isPlayerControlled = isPlayerControlled
     }
     
-    /// 新しいStatsで更新されたCombatantを返す
+    /// Returns a copy of the combatant using updated stats.
     public func withStats(_ newStats: Stats) -> Combatant {
         Combatant(
             id: id,
@@ -110,27 +110,27 @@ public struct Combatant: Sendable, Equatable {
     }
 }
 
-/// 戦闘の現在状態を表すイミュータブルな構造体
+/// An immutable structure that stores the entire battle state.
 public struct BattleState: Sendable, Equatable {
-    /// 現在の戦闘フェーズ
+    /// The current phase of the battle.
     public let phase: BattlePhase
-    
-    /// 戦闘参加者一覧
+
+    /// A lookup table of all combatants.
     public let combatants: [CombatantID: Combatant]
-    
-    /// プレイヤーキャラクターのID一覧
+
+    /// The set of player-controlled combatant identifiers.
     public let playerCombatants: Set<CombatantID>
-    
-    /// 敵キャラクターのID一覧
+
+    /// The set of enemy combatant identifiers.
     public let enemyCombatants: Set<CombatantID>
-    
-    /// 現在のターン数
+
+    /// The current turn counter.
     public let turnCount: Int
-    
-    /// 現在アクション中のキャラクターID
+
+    /// The combatant that is currently acting, if any.
     public let currentActor: CombatantID?
-    
-    /// 保留中のエフェクト一覧
+
+    /// Pending effects awaiting execution.
     public let pendingEffects: [any Effect]
     
     public init(
@@ -151,7 +151,7 @@ public struct BattleState: Sendable, Equatable {
         self.pendingEffects = pendingEffects
     }
     
-    /// 戦闘が終了しているかどうか
+    /// Indicates whether the battle has reached a terminal phase.
     public var isBattleEnded: Bool {
         switch phase {
         case .victory, .defeat, .escape:
@@ -160,22 +160,22 @@ public struct BattleState: Sendable, Equatable {
             return false
         }
     }
-    
-    /// 生存しているプレイヤーキャラクター
+
+    /// Returns the player-controlled combatants that are still active.
     public var alivePlayers: [Combatant] {
         playerCombatants.compactMap { id in
             combatants[id]?.stats.isDefeated == false ? combatants[id] : nil
         }
     }
-    
-    /// 生存している敵キャラクター
+
+    /// Returns the enemy combatants that are still active.
     public var aliveEnemies: [Combatant] {
         enemyCombatants.compactMap { id in
             combatants[id]?.stats.isDefeated == false ? combatants[id] : nil
         }
     }
-    
-    /// 戦闘参加者を更新した新しいBattleStateを返す
+
+    /// Returns a new state with the provided combatant updated or inserted.
     public func withCombatant(_ combatant: Combatant) -> BattleState {
         var newCombatants = combatants
         newCombatants[combatant.id] = combatant
@@ -191,7 +191,7 @@ public struct BattleState: Sendable, Equatable {
         )
     }
     
-    /// フェーズを更新した新しいBattleStateを返す
+    /// Returns a new state with a different battle phase.
     public func withPhase(_ newPhase: BattlePhase) -> BattleState {
         BattleState(
             phase: newPhase,
@@ -204,7 +204,7 @@ public struct BattleState: Sendable, Equatable {
         )
     }
     
-    /// エフェクトを追加した新しいBattleStateを返す
+    /// Returns a new state with additional pending effects appended.
     public func withEffects(_ effects: [any Effect]) -> BattleState {
         BattleState(
             phase: phase,
@@ -217,7 +217,7 @@ public struct BattleState: Sendable, Equatable {
         )
     }
     
-    /// エフェクトをクリアした新しいBattleStateを返す
+    /// Returns a new state with all pending effects removed.
     public func withClearedEffects() -> BattleState {
         BattleState(
             phase: phase,
@@ -232,7 +232,11 @@ public struct BattleState: Sendable, Equatable {
 }
 
 extension BattleState {
-    /// Equatableの実装（pendingEffectsはtype erasedなので個別比較）
+    /// Custom ``Equatable`` implementation.
+    ///
+    /// Pending effects are type-erased, so only their counts are compared at
+    /// this stage. Extend this logic if more granular comparisons are needed in
+    /// the future.
     public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
         lhs.phase == rhs.phase &&
         lhs.combatants == rhs.combatants &&
@@ -241,6 +245,6 @@ extension BattleState {
         lhs.turnCount == rhs.turnCount &&
         lhs.currentActor == rhs.currentActor &&
         lhs.pendingEffects.count == rhs.pendingEffects.count
-        // Note: pendingEffectsの詳細比較は今後必要に応じて実装
+        // Note: Extend this comparison with detailed effect matching when needed.
     }
 }

@@ -1,21 +1,24 @@
-/// State-Storeパターンの核となるReducer
-/// Action + State → (State, [Effect]) の純粋関数を提供する
+/// The reducer at the heart of the state-store pattern.
+///
+/// Combines an action and a state into a new state plus a collection of
+/// generated effects.
 public struct BattleReducer: Sendable {
-    
+
     public init() {}
-    
-    /// メインのReducer関数
+
+    /// The primary reducer function.
+    ///
     /// - Parameters:
-    ///   - state: 現在の戦闘状態
-    ///   - action: 実行するアクション
-    /// - Returns: 新しい状態と発生するエフェクトのタプル
+    ///   - state: The current battle state.
+    ///   - action: The action to evaluate.
+    /// - Returns: A tuple containing the next state and any generated effects.
     public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
         switch action {
-        
-        // MARK: - 戦闘フロー制御
+
+        // MARK: - Battle Flow Control
         case .startBattle(let players, let enemies):
             return reduceStartBattle(state: state, players: players, enemies: enemies)
-            
+
         case .endBattle(let result):
             return reduceEndBattle(state: state, result: result)
             
@@ -25,7 +28,7 @@ public struct BattleReducer: Sendable {
         case .advanceTurn:
             return reduceAdvanceTurn(state: state)
             
-        // MARK: - キャラクター行動
+        // MARK: - Character Actions
         case .attack(let attacker, let target, let damage):
             return reduceAttack(state: state, attacker: attacker, target: target, damage: damage)
             
@@ -41,7 +44,7 @@ public struct BattleReducer: Sendable {
         case .escape(let escaper):
             return reduceEscape(state: state, escaper: escaper)
             
-        // MARK: - ステータス変更
+        // MARK: - Status Adjustments
         case .changeHP(let target, let amount):
             return reduceChangeHP(state: state, target: target, amount: amount)
             
@@ -54,7 +57,7 @@ public struct BattleReducer: Sendable {
         case .removeStatusEffect(let target, let effect):
             return reduceRemoveStatusEffect(state: state, target: target, effect: effect)
             
-        // MARK: - ターン制御
+        // MARK: - Turn Coordination
         case .setCurrentActor(let actorID):
             return reduceSetCurrentActor(state: state, actorID: actorID)
             
@@ -64,7 +67,7 @@ public struct BattleReducer: Sendable {
         case .completeActionSelection(let combatantID, let action):
             return reduceCompleteActionSelection(state: state, combatantID: combatantID, action: action)
             
-        // MARK: - エフェクト制御
+        // MARK: - Effect Management
         case .addEffects(let effectIDs):
             return reduceAddEffects(state: state, effectIDs: effectIDs)
             
@@ -74,7 +77,7 @@ public struct BattleReducer: Sendable {
         case .clearEffects:
             return reduceClearEffects(state: state)
             
-        // MARK: - AI制御
+        // MARK: - AI Coordination
         case .aiDecideAction(let combatantID):
             return reduceAIDecideAction(state: state, combatantID: combatantID)
             
@@ -88,7 +91,7 @@ public struct BattleReducer: Sendable {
 
 extension BattleReducer {
     
-    // MARK: - 戦闘フロー制御
+    // MARK: - Battle Flow Control
     
     private func reduceStartBattle(
         state: BattleState,
@@ -100,13 +103,13 @@ extension BattleReducer {
         var playerIDs: Set<CombatantID> = []
         var enemyIDs: Set<CombatantID> = []
         
-        // プレイヤーキャラクターを追加
+        // Register player combatants.
         for player in players {
             combatants[player.id] = player
             playerIDs.insert(player.id)
         }
-        
-        // 敵キャラクターを追加
+
+        // Register enemy combatants.
         for enemy in enemies {
             combatants[enemy.id] = enemy
             enemyIDs.insert(enemy.id)
@@ -186,7 +189,7 @@ extension BattleReducer {
         return (newState, effects)
     }
     
-    // MARK: - キャラクター行動
+    // MARK: - Character Actions
     
     private func reduceAttack(
         state: BattleState,
@@ -221,15 +224,15 @@ extension BattleReducer {
         targets: [CombatantID]
     ) -> (BattleState, [any Effect]) {
         
-        // 現在は基本実装のみ
+        // Placeholder implementation; extend with concrete skill logic.
         let effects: [any Effect] = [
             BaseEffect(id: "skill_animation_\(skillID)", priority: 3),
             BaseEffect(id: "skill_sound_\(skillID)", priority: 1)
         ]
-        
+
         return (state, effects)
     }
-    
+
     private func reduceUseItem(
         state: BattleState,
         user: CombatantID,
@@ -237,11 +240,11 @@ extension BattleReducer {
         target: CombatantID?
     ) -> (BattleState, [any Effect]) {
         
-        // 現在は基本実装のみ
+        // Placeholder implementation; extend with concrete item logic.
         let effects: [any Effect] = [
             BaseEffect(id: "item_use_\(itemID)", priority: 2)
         ]
-        
+
         return (state, effects)
     }
     
@@ -262,7 +265,7 @@ extension BattleReducer {
         escaper: CombatantID
     ) -> (BattleState, [any Effect]) {
         
-        // プレイヤーの逃走の場合は戦闘終了
+        // Player escape ends the encounter immediately.
         if state.playerCombatants.contains(escaper) {
             let newState = state.withPhase(.escape)
             let effects: [any Effect] = [
@@ -270,12 +273,12 @@ extension BattleReducer {
             ]
             return (newState, effects)
         }
-        
-        // 敵の逃走（未実装）
+
+        // Enemy escape is a future enhancement.
         return (state, [])
     }
-    
-    // MARK: - ステータス変更
+
+    // MARK: - Status Adjustments
     
     private func reduceChangeHP(
         state: BattleState,
@@ -332,11 +335,11 @@ extension BattleReducer {
         duration: Int
     ) -> (BattleState, [any Effect]) {
         
-        // 状態異常システムは将来のフェーズで実装
+        // Status ailments will be implemented in a future phase.
         let effects: [any Effect] = [
             BaseEffect(id: "status_effect_apply_\(effect)", priority: 2)
         ]
-        
+
         return (state, effects)
     }
     
@@ -346,15 +349,15 @@ extension BattleReducer {
         effect: String
     ) -> (BattleState, [any Effect]) {
         
-        // 状態異常システムは将来のフェーズで実装
+        // Status ailments will be implemented in a future phase.
         let effects: [any Effect] = [
             BaseEffect(id: "status_effect_remove_\(effect)", priority: 1)
         ]
-        
+
         return (state, effects)
     }
-    
-    // MARK: - ターン制御
+
+    // MARK: - Turn Coordination
     
     private func reduceSetCurrentActor(
         state: BattleState,
@@ -399,7 +402,7 @@ extension BattleReducer {
         return (state, effects)
     }
     
-    // MARK: - エフェクト制御
+    // MARK: - Effect Management
     
     private func reduceAddEffects(
         state: BattleState,
@@ -416,7 +419,7 @@ extension BattleReducer {
         effectID: String
     ) -> (BattleState, [any Effect]) {
         
-        // エフェクト実行は副作用なので、状態変更は行わない
+        // Effect execution is side-effect only and does not mutate state.
         return (state, [])
     }
     
@@ -425,18 +428,18 @@ extension BattleReducer {
         return (newState, [])
     }
     
-    // MARK: - AI制御
+    // MARK: - AI Coordination
     
     private func reduceAIDecideAction(
         state: BattleState,
         combatantID: CombatantID
     ) -> (BattleState, [any Effect]) {
         
-        // AI行動決定は将来のフェーズで実装
+        // AI decision-making will arrive in a future phase.
         let effects: [any Effect] = [
             BaseEffect(id: "ai_thinking_\(combatantID.value)", priority: 1)
         ]
-        
+
         return (state, effects)
     }
     
@@ -446,7 +449,7 @@ extension BattleReducer {
         action: SelectedAction
     ) -> (BattleState, [any Effect]) {
         
-        // AI行動実行は将来のフェーズで実装
+        // AI execution will arrive in a future phase.
         return (state, [])
     }
 }

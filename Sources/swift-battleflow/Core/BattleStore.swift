@@ -1,235 +1,254 @@
 import Foundation
 import Observation
 
-/// State-Storeパターンの中央ハブ
-/// 戦闘状態の管理とアクション処理を担当する
+/// The central hub of the state-store pattern.
+///
+/// ``BattleStore`` owns the battle state, processes actions, and coordinates
+/// effect execution.
 @Observable
 @MainActor
 public final class BattleStore {
-    
-    /// 現在の戦闘状態
+
+    /// The current battle state.
     public private(set) var state: BattleState
-    
-    /// エフェクトハンドラー（副作用の実行を委譲）
+
+    /// An optional handler used to execute side effects.
     public var effectHandler: ((any Effect) async -> Void)?
-    
-    /// Reducer（状態遷移のロジック）
+
+    /// The reducer that encapsulates state transition logic.
     private let reducer: BattleReducer
-    
-    /// アクションの履歴（デバッグ用）
+
+    /// A debug-friendly log of dispatched actions.
     private var actionHistory: [BattleAction] = []
-    
-    /// 初期化
-    /// - Parameter initialState: 初期戦闘状態
+
+    /// Creates a store using the provided initial battle state.
+    ///
+    /// - Parameter initialState: The starting state. The default value produces
+    ///   an empty battle.
     public init(initialState: BattleState = BattleState()) {
         self.state = initialState
         self.reducer = BattleReducer()
     }
-    
-    /// アクションを実行する
-    /// - Parameter action: 実行するアクション
+
+    /// Dispatches a single action synchronously.
+    ///
+    /// - Parameter action: The action to process.
     public func dispatch(_ action: BattleAction) {
-        // アクション履歴に追加
+        // Record the action for debugging.
         actionHistory.append(action)
-        
-        // Reducerで状態とエフェクトを計算
+
+        // Compute the new state and effects via the reducer.
         let (newState, effects) = reducer.reduce(state: state, action: action)
-        
-        // 状態を更新
+
+        // Update the state.
         state = newState
-        
-        // エフェクトを実行
+
+        // Run any generated effects.
         Task {
             await executeEffects(effects)
         }
     }
-    
-    /// 複数のアクションを順次実行する
-    /// - Parameter actions: 実行するアクション配列
+
+    /// Dispatches a sequence of actions in order.
+    ///
+    /// - Parameter actions: The ordered actions to process.
     public func dispatch(_ actions: [BattleAction]) {
         for action in actions {
             dispatch(action)
         }
     }
-    
-    /// 非同期でアクションを実行する
-    /// - Parameter action: 実行するアクション
+
+    /// Dispatches an action from asynchronous contexts.
+    ///
+    /// - Parameter action: The action to process.
     public func dispatchAsync(_ action: BattleAction) async {
         dispatch(action)
     }
-    
-    /// 状態をリセットする
-    /// - Parameter newState: 新しい状態（nilの場合は初期状態）
+
+    /// Resets the state to the supplied value or a fresh battle.
+    ///
+    /// - Parameter newState: The replacement state. When omitted, a new
+    ///   ``BattleState`` instance is used.
     public func resetState(_ newState: BattleState? = nil) {
         state = newState ?? BattleState()
         actionHistory.removeAll()
     }
-    
-    /// アクション履歴を取得する
-    /// - Returns: 実行されたアクションの配列
+
+    /// Returns a snapshot of the action history.
     public func getActionHistory() -> [BattleAction] {
         return actionHistory
     }
-    
-    /// アクション履歴をクリアする
+
+    /// Clears the recorded action history.
     public func clearActionHistory() {
         actionHistory.removeAll()
     }
-    
-    /// 現在の状態のスナップショットを取得する
-    /// - Returns: 現在の戦闘状態のコピー
+
+    /// Returns the current battle state without mutating it.
     public func getStateSnapshot() -> BattleState {
         return state
     }
 }
 
-// MARK: - エフェクト処理
+// MARK: - Effect Execution
 
 extension BattleStore {
-    
-    /// エフェクトを実行する
-    /// - Parameter effects: 実行するエフェクト配列
+
+    /// Executes the supplied effects in priority order.
+    ///
+    /// - Parameter effects: The pending effects to run.
     private func executeEffects(_ effects: [any Effect]) async {
-        // 優先度でソート（高い順）
+        // Sort effects by descending priority.
         let sortedEffects = effects.sorted { $0.priority > $1.priority }
-        
+
         for effect in sortedEffects {
             await executeEffect(effect)
         }
     }
-    
-    /// 単一のエフェクトを実行する
-    /// - Parameter effect: 実行するエフェクト
+
+    /// Executes a single effect.
+    ///
+    /// - Parameter effect: The effect to run.
     private func executeEffect(_ effect: any Effect) async {
-        // エフェクトハンドラーが設定されている場合は委譲
+        // Delegate to the effect handler when available.
         if let handler = effectHandler {
             await handler(effect)
         } else {
-            // デフォルトの処理（ログ出力のみ）
+            // Default behavior simply logs the effect execution.
             print("🎬 Effect executed: \(effect.id) (priority: \(effect.priority))")
         }
-        
-        // エフェクト実行のアクションをディスパッチ
+
+        // Inform the reducer that the effect has been executed.
         await MainActor.run {
             dispatch(.executeEffect(effect.id))
         }
     }
 }
 
-// MARK: - 便利メソッド
+// MARK: - Convenience API
 
 extension BattleStore {
-    
-    /// 戦闘を開始する
+
+    /// Starts a battle with the provided player and enemy rosters.
+    ///
     /// - Parameters:
-    ///   - players: プレイヤーキャラクター配列
-    ///   - enemies: 敵キャラクター配列
+    ///   - players: The player-controlled combatants.
+    ///   - enemies: The opposing combatants.
     public func startBattle(players: [Combatant], enemies: [Combatant]) {
         dispatch(.startBattle(players: players, enemies: enemies))
     }
     
-    /// 戦闘を終了する
-    /// - Parameter result: 戦闘結果
+    /// Ends the battle with the specified result.
+    ///
+    /// - Parameter result: The resolved outcome.
     public func endBattle(with result: BattleResult) {
         dispatch(.endBattle(result: result))
     }
-    
-    /// 攻撃を実行する
+
+    /// Performs an attack action with precomputed damage.
+    ///
     /// - Parameters:
-    ///   - attacker: 攻撃者のID
-    ///   - target: 対象のID
-    ///   - damage: ダメージ量
+    ///   - attacker: The attacking combatant.
+    ///   - target: The combatant receiving the attack.
+    ///   - damage: The amount of damage to apply.
     public func performAttack(attacker: CombatantID, target: CombatantID, damage: Int) {
         dispatch(.attack(attacker: attacker, target: target, damage: damage))
     }
-    
-    /// HPを変更する
+
+    /// Adjusts a combatant's hit points.
+    ///
     /// - Parameters:
-    ///   - target: 対象のID
-    ///   - amount: 変更量（正の値で回復、負の値でダメージ）
+    ///   - target: The combatant receiving the change.
+    ///   - amount: The delta to apply. Positive values heal, negative values
+    ///     inflict damage.
     public func changeHP(target: CombatantID, amount: Int) {
         dispatch(.changeHP(target: target, amount: amount))
     }
-    
-    /// 現在のアクターを設定する
-    /// - Parameter combatantID: アクターのID
+
+    /// Updates the currently acting combatant.
+    ///
+    /// - Parameter combatantID: The acting combatant, or `nil` to clear it.
     public func setCurrentActor(_ combatantID: CombatantID?) {
         dispatch(.setCurrentActor(combatantID))
     }
-    
-    /// ターンを進める
+
+    /// Advances the battle to the next turn.
     public func advanceTurn() {
         dispatch(.advanceTurn)
     }
-    
-    /// フェーズを変更する
-    /// - Parameter phase: 新しいフェーズ
+
+    /// Moves the battle to a specific phase.
+    ///
+    /// - Parameter phase: The phase to enter.
     public func advanceToPhase(_ phase: BattlePhase) {
         dispatch(.advancePhase(phase))
     }
 }
 
-// MARK: - 状態クエリメソッド
+// MARK: - State Queries
 
 extension BattleStore {
-    
-    /// 戦闘が終了しているかどうか
+
+    /// Indicates whether the battle has ended.
     public var isBattleEnded: Bool {
         return state.isBattleEnded
     }
-    
-    /// 生存しているプレイヤーキャラクター
+
+    /// Returns the player-controlled combatants that are still active.
     public var alivePlayers: [Combatant] {
         return state.alivePlayers
     }
-    
-    /// 生存している敵キャラクター
+
+    /// Returns the enemy combatants that are still active.
     public var aliveEnemies: [Combatant] {
         return state.aliveEnemies
     }
-    
-    /// 現在のフェーズ
+
+    /// The battle's current phase.
     public var currentPhase: BattlePhase {
         return state.phase
     }
-    
-    /// 現在のターン数
+
+    /// The number of turns that have elapsed.
     public var currentTurn: Int {
         return state.turnCount
     }
-    
-    /// 現在のアクター
+
+    /// The combatant currently performing an action.
     public var currentActor: CombatantID? {
         return state.currentActor
     }
-    
-    /// 特定のキャラクターを取得する
-    /// - Parameter id: キャラクターのID
-    /// - Returns: 該当するキャラクター（存在しない場合はnil）
+
+    /// Looks up a combatant by identifier.
+    ///
+    /// - Parameter id: The identifier to search for.
+    /// - Returns: The matching combatant, or `nil` when not found.
     public func getCombatant(_ id: CombatantID) -> Combatant? {
         return state.combatants[id]
     }
-    
-    /// プレイヤーキャラクターかどうかを判定する
-    /// - Parameter id: キャラクターのID
-    /// - Returns: プレイヤーキャラクターの場合true
+
+    /// Determines whether the identifier references a player-controlled combatant.
+    ///
+    /// - Parameter id: The identifier to inspect.
+    /// - Returns: ``true`` when the combatant is controlled by the player.
     public func isPlayerCombatant(_ id: CombatantID) -> Bool {
         return state.playerCombatants.contains(id)
     }
-    
-    /// 敵キャラクターかどうかを判定する
-    /// - Parameter id: キャラクターのID
-    /// - Returns: 敵キャラクターの場合true
+
+    /// Determines whether the identifier references an enemy combatant.
+    ///
+    /// - Parameter id: The identifier to inspect.
+    /// - Returns: ``true`` when the combatant is an enemy.
     public func isEnemyCombatant(_ id: CombatantID) -> Bool {
         return state.enemyCombatants.contains(id)
     }
 }
 
-// MARK: - デバッグ機能
+// MARK: - Debug Utilities
 
 extension BattleStore {
-    
-    /// 現在の状態をログ出力する
+
+    /// Prints a snapshot of the current state to the console.
     public func logCurrentState() {
         print("=== Battle State ===")
         print("Phase: \(state.phase)")
@@ -241,7 +260,7 @@ extension BattleStore {
         print("==================")
     }
     
-    /// アクション履歴をログ出力する
+    /// Prints the recorded action history to the console.
     public func logActionHistory() {
         print("=== Action History ===")
         for (index, action) in actionHistory.enumerated() {

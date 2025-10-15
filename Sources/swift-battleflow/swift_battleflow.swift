@@ -1,7 +1,8 @@
-/// Swift BattleFlow - JRPGスタイルのターン制戦闘システムライブラリ
-/// 
-/// Pure SwiftでState-Storeパターンを採用し、副作用をEffectとして分離した
-/// モダンで保守性の高い戦闘システムを提供します。
+/// Swift BattleFlow - A JRPG-style turn-based combat system library.
+///
+/// This module is written in pure Swift and embraces a state-store pattern that
+/// isolates side effects as `Effect` values. It delivers a modern, testable
+/// combat system that remains maintainable as your project scales.
 
 // MARK: - Core Exports
 
@@ -12,29 +13,36 @@
 
 // MARK: - Convenience Factory
 
-/// BattleFlowライブラリのメインエントリーポイント
+/// The primary entry point for the BattleFlow library.
 public struct BattleFlow {
-    
-    /// 新しい戦闘ストアを作成する
-    /// - Parameter initialState: 初期状態（省略時は空の状態）
-    /// - Returns: 設定済みのBattleStore
+
+    /// Creates a new battle store configured for the provided initial state.
+    ///
+    /// - Parameter initialState: The starting state for the battle. The default
+    ///   value creates an empty battle.
+    /// - Returns: A fully initialized ``BattleStore`` ready to process actions.
     @MainActor
     public static func createStore(initialState: BattleState = BattleState()) -> BattleStore {
         return BattleStore(initialState: initialState)
     }
-    
-    /// デモ用のキャラクターを作成する
+
+    /// Creates a convenience combatant for demonstrations or quick testing.
+    ///
     /// - Parameters:
-    ///   - name: キャラクター名
-    ///   - hp: 現在のHP
-    ///   - maxHP: 最大HP（省略時は現在のHPと同じ）
-    ///   - mp: 現在のMP
-    ///   - maxMP: 最大MP（省略時は現在のMPと同じ）
-    ///   - attack: 攻撃力
-    ///   - defense: 防御力
-    ///   - speed: 速度
-    ///   - isPlayer: プレイヤーキャラクターかどうか
-    /// - Returns: 設定済みのCombatant
+    ///   - name: The display name of the character.
+    ///   - hp: The current hit points.
+    ///   - maxHP: The maximum hit points. When omitted, the current hit points
+    ///     value is reused.
+    ///   - mp: The current magic points.
+    ///   - maxMP: The maximum magic points. When omitted, the current magic
+    ///     points value is reused.
+    ///   - attack: The attack strength used for physical calculations.
+    ///   - defense: The defense strength used to reduce incoming damage.
+    ///   - speed: The initiative value used to order turns.
+    ///   - isPlayer: A Boolean value that indicates whether this combatant is
+    ///     controlled by the player.
+    /// - Returns: A configured ``Combatant`` instance that can be inserted into
+    ///   a battle state.
     public static func createCharacter(
         name: String,
         hp: Int = 100,

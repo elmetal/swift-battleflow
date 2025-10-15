@@ -1,86 +1,88 @@
-/// 戦闘中に発生する全てのアクションを表現する列挙型
-/// State-Storeパターンにおいて状態変更のトリガーとなる
+/// Describes every action that can occur during a battle.
+///
+/// Each case represents an event that triggers a state transition within the
+/// state-store architecture.
 public enum BattleAction: Sendable {
-    
-    // MARK: - 戦闘フロー制御
-    /// 戦闘を開始する
+
+    // MARK: - Battle Flow Control
+    /// Starts a battle session.
     case startBattle(players: [Combatant], enemies: [Combatant])
-    
-    /// 戦闘を終了する
+
+    /// Ends the battle with the supplied result.
     case endBattle(result: BattleResult)
-    
-    /// 次のフェーズに移行する
+
+    /// Advances to the next phase in the battle flow.
     case advancePhase(BattlePhase)
-    
-    /// ターンを進める
+
+    /// Moves the combat timeline to the next turn.
     case advanceTurn
-    
-    // MARK: - キャラクター行動
-    /// 攻撃アクション
+
+    // MARK: - Character Actions
+    /// Performs a basic attack.
     case attack(attacker: CombatantID, target: CombatantID, damage: Int)
-    
-    /// スキル使用アクション
+
+    /// Uses a skill against one or more targets.
     case useSkill(user: CombatantID, skillID: String, targets: [CombatantID])
-    
-    /// アイテム使用アクション
+
+    /// Uses an item, optionally selecting a target.
     case useItem(user: CombatantID, itemID: String, target: CombatantID?)
-    
-    /// 防御アクション
+
+    /// Raises defenses for the specified combatant.
     case defend(defender: CombatantID)
-    
-    /// 逃走アクション
+
+    /// Attempts to flee from the encounter.
     case escape(escaper: CombatantID)
-    
-    // MARK: - ステータス変更
-    /// HPを変更する
+
+    // MARK: - Status Adjustments
+    /// Modifies the target's hit points by a positive or negative amount.
     case changeHP(target: CombatantID, amount: Int)
-    
-    /// MPを変更する
+
+    /// Modifies the target's magic points by a positive or negative amount.
     case changeMP(target: CombatantID, amount: Int)
-    
-    /// ステータス異常を付与する
+
+    /// Applies a named status effect for a given duration.
     case applyStatusEffect(target: CombatantID, effect: String, duration: Int)
-    
-    /// ステータス異常を解除する
+
+    /// Removes a specific status effect from the target.
     case removeStatusEffect(target: CombatantID, effect: String)
-    
-    // MARK: - ターン制御
-    /// 現在のアクターを設定する
+
+    // MARK: - Turn Coordination
+    /// Sets the combatant that is currently acting.
     case setCurrentActor(CombatantID?)
-    
-    /// アクション選択を開始する
+
+    /// Signals the beginning of an action selection phase for a combatant.
     case beginActionSelection(for: CombatantID)
-    
-    /// アクション選択を完了する
+
+    /// Completes an action selection with the specified decision.
     case completeActionSelection(for: CombatantID, action: SelectedAction)
-    
-    // MARK: - エフェクト制御
-    /// エフェクトを追加する
-    case addEffects([String])  // エフェクトIDの配列
-    
-    /// エフェクトを実行する
-    case executeEffect(String)  // エフェクトID
-    
-    /// 全てのエフェクトをクリアする
+
+    // MARK: - Effect Management
+    /// Queues one or more side-effect identifiers for later execution.
+    case addEffects([String])  // Effect identifiers.
+
+    /// Executes a previously enqueued effect.
+    case executeEffect(String)  // Effect identifier.
+
+    /// Clears all pending effects from the queue.
     case clearEffects
-    
-    // MARK: - AI制御
-    /// AI行動を決定する
+
+    // MARK: - AI Coordination
+    /// Requests an AI-controlled combatant to select an action.
     case aiDecideAction(for: CombatantID)
-    
-    /// AI行動を実行する
+
+    /// Executes the decision returned by the AI.
     case aiExecuteAction(for: CombatantID, action: SelectedAction)
 }
 
-/// 戦闘結果
+/// Represents the outcome of a battle.
 public enum BattleResult: Sendable, Equatable {
-    case victory    // プレイヤー勝利
-    case defeat     // プレイヤー敗北
-    case escape     // 逃走成功
-    case draw       // 引き分け
+    case victory    // Player victory.
+    case defeat     // Player defeat.
+    case escape     // Successful escape.
+    case draw       // Neither side prevails.
 }
 
-/// 選択されたアクション
+/// The action that a combatant ultimately chooses to perform.
 public enum SelectedAction: Sendable, Equatable {
     case attack(target: CombatantID)
     case skill(id: String, targets: [CombatantID])
@@ -89,35 +91,35 @@ public enum SelectedAction: Sendable, Equatable {
     case escape
 }
 
-/// アクションの優先度
+/// The relative priority assigned to an action.
 public enum ActionPriority: Int, CaseIterable, Sendable {
     case lowest = 0
     case low = 1
     case normal = 2
     case high = 3
     case highest = 4
-    
-    /// 逃走アクションの優先度
+
+    /// The priority used when a combatant attempts to escape.
     public static let escape: ActionPriority = .highest
-    
-    /// アイテム使用の優先度
+
+    /// The priority used when a combatant consumes an item.
     public static let item: ActionPriority = .high
-    
-    /// スキル使用の優先度（デフォルト）
+
+    /// The default priority assigned to skill usage.
     public static let skill: ActionPriority = .normal
-    
-    /// 通常攻撃の優先度
+
+    /// The priority used for standard attacks.
     public static let attack: ActionPriority = .normal
-    
-    /// 防御の優先度
+
+    /// The priority used when a combatant defends.
     public static let defend: ActionPriority = .low
 }
 
-/// アクションに関連するメタデータ
+/// Metadata that influences how an action is scheduled or executed.
 public struct ActionMetadata: Sendable, Equatable {
     public let priority: ActionPriority
     public let speed: Int
-    public let isInstant: Bool  // 即座に実行されるアクション
+    public let isInstant: Bool  // Indicates immediate execution.
     
     public init(
         priority: ActionPriority = .normal,
@@ -156,7 +158,7 @@ extension BattleAction: Equatable {
         }
     }
     
-    /// アクションのメタデータを取得する
+    /// Provides default metadata for the selected action.
     public var metadata: ActionMetadata {
         switch self {
         case .escape:
@@ -174,7 +176,7 @@ extension BattleAction: Equatable {
         }
     }
     
-    /// アクションが戦闘フロー制御に関するものかどうか
+    /// Indicates whether the action manipulates the combat flow.
     public var isFlowControl: Bool {
         switch self {
         case .startBattle, .endBattle, .advancePhase, .advanceTurn,
@@ -184,8 +186,8 @@ extension BattleAction: Equatable {
             return false
         }
     }
-    
-    /// アクションがキャラクター行動に関するものかどうか
+
+    /// Indicates whether the action is driven by a combatant's behavior.
     public var isCharacterAction: Bool {
         switch self {
         case .attack, .useSkill, .useItem, .defend, .escape:
