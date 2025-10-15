@@ -1,14 +1,16 @@
-/// 戦闘システムで発生する副作用を表現するプロトコル
-/// アニメーション、サウンド、UI更新などの副作用を純粋なロジックから分離する
+/// Describes a side effect that occurs as part of the battle system.
+///
+/// Effects capture animation, sound, UI updates, and other external work so it
+/// can remain separate from the pure battle logic.
 public protocol Effect: Sendable, Equatable {
-    /// エフェクトの一意識別子
+    /// A unique identifier for the effect.
     var id: String { get }
-    
-    /// エフェクトの実行優先度（高い値ほど先に実行される）
+
+    /// The execution priority, where larger values run first.
     var priority: Int { get }
 }
 
-/// エフェクトの基本実装
+/// A convenience implementation of ``Effect``.
 public struct BaseEffect: Effect {
     public let id: String
     public let priority: Int
@@ -19,7 +21,7 @@ public struct BaseEffect: Effect {
     }
 }
 
-/// エフェクトなし（NoOpパターン）
+/// A sentinel effect used when no work is required.
 public struct NoEffect: Effect {
     public let id: String = "no_effect"
     public let priority: Int = 0
