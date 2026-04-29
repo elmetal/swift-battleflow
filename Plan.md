@@ -95,7 +95,7 @@ JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。
 
 ```
 Sources/swift-battleflow/
-├── Core/
+├── Engine/
 │   ├── BattleStore.swift
 │   ├── BattleState.swift
 │   ├── BattleAction.swift
@@ -150,4 +150,3 @@ Sources/swift-battleflow/
 2. **フェーズ3の拡張**: TurnOrder、AI行動決定
 3. **フェーズ5**: 状態異常システム、アイテムシステム
 4. **フェーズ7**: API documentation、サンプルアプリ
-
