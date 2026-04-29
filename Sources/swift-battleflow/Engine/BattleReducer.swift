@@ -4,70 +4,20 @@
 /// generated effects.
 public struct BattleReducer: Sendable {
 
-  private let jrpgReducer: JRPGReducer
-
-  public init(jrpgReducer: JRPGReducer = JRPGReducer()) {
-    self.jrpgReducer = jrpgReducer
-  }
-
-  /// The primary reducer function.
-  ///
-  /// - Parameters:
-  ///   - state: The current battle state.
-  ///   - action: The action to evaluate.
-  /// - Returns: A tuple containing the next state and any generated effects.
-  public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
-    switch action {
-    case .engine(let action):
-      return reduce(state: state, action: action)
-
-    case .jrpg:
-      return (state, [])
-    }
-  }
-
-  /// Reduces actions against the default JRPG battle state.
-  public func reduce(
-    state: JRPGBattleState,
-    action: BattleAction
-  ) -> (JRPGBattleState, [any Effect]) {
-    switch action {
-    case .engine(let action):
-      return reduce(state: state, action: action)
-
-    case .jrpg(let action):
-      return jrpgReducer.reduce(state: state, action: action)
-    }
-  }
+  public init() {}
 
   /// Reduces engine-level actions while preserving JRPG rule state.
   public func reduce(
     state: JRPGBattleState,
-    action: EngineAction
+    action: BattleAction
   ) -> (JRPGBattleState, [any Effect]) {
-    switch action {
-    case .startBattleFlow(let players, let enemies):
-      return reduceStartBattle(state: state, players: players, enemies: enemies)
-
-    case .endBattleFlow(let result):
-      return reduceEndBattle(state: state, result: result)
-
-    default:
-      let (engineState, effects) = reduce(state: state.engineState, action: action)
-      return (state.withEngineState(engineState), effects)
-    }
+    let (engineState, effects) = reduce(state: state.engineState, action: action)
+    return (state.withEngineState(engineState), effects)
   }
 
   /// Reduces engine-level actions.
-  public func reduce(state: BattleState, action: EngineAction) -> (BattleState, [any Effect]) {
+  public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
     switch action {
-
-    // MARK: - Battle Flow Control
-    case .startBattleFlow(let players, let enemies):
-      return reduceStartBattleFlow(state: state, players: players, enemies: enemies)
-
-    case .endBattleFlow(let result):
-      return reduceEndBattleFlow(state: state, result: result)
 
     case .transitionPhase(let newPhase):
       return reduceAdvancePhase(state: state, newPhase: newPhase)
@@ -105,135 +55,6 @@ public struct BattleReducer: Sendable {
 extension BattleReducer {
 
   // MARK: - Battle Flow Control
-
-  private func reduceStartBattle(
-    state: JRPGBattleState,
-    players: [Combatant],
-    enemies: [Combatant]
-  ) -> (JRPGBattleState, [any Effect]) {
-
-    var combatants: [CombatantID: Combatant] = [:]
-    var playerIDs: Set<CombatantID> = []
-    var enemyIDs: Set<CombatantID> = []
-
-    // Register player combatants.
-    for player in players {
-      combatants[player.id] = player
-      playerIDs.insert(player.id)
-    }
-
-    // Register enemy combatants.
-    for enemy in enemies {
-      combatants[enemy.id] = enemy
-      enemyIDs.insert(enemy.id)
-    }
-
-    let newState = JRPGBattleState(
-      phase: .turnSelection,
-      combatants: combatants,
-      playerCombatants: playerIDs,
-      enemyCombatants: enemyIDs,
-      turnCount: 1,
-      currentActor: nil,
-      pendingEffects: []
-    )
-
-    let effects: [any Effect] = [
-      BaseEffect(id: "battle_start_animation", priority: 1),
-      BaseEffect(id: "battle_music_start", priority: 1),
-    ]
-
-    return (newState, effects)
-  }
-
-  private func reduceStartBattleFlow(
-    state: BattleState,
-    players: [Combatant],
-    enemies: [Combatant]
-  ) -> (BattleState, [any Effect]) {
-    var participants: [CombatantID: BattleParticipant] = [:]
-    var playerIDs: Set<CombatantID> = []
-    var enemyIDs: Set<CombatantID> = []
-
-    for player in players {
-      participants[player.id] = BattleParticipant(id: player.id)
-      playerIDs.insert(player.id)
-    }
-
-    for enemy in enemies {
-      participants[enemy.id] = BattleParticipant(id: enemy.id)
-      enemyIDs.insert(enemy.id)
-    }
-
-    let newState = BattleState(
-      phase: .turnSelection,
-      participants: participants,
-      groups: [
-        .players: playerIDs,
-        .enemies: enemyIDs,
-      ],
-      turnCount: 1,
-      currentActor: nil,
-      pendingEffects: []
-    )
-
-    let effects: [any Effect] = [
-      BaseEffect(id: "battle_start_animation", priority: 1),
-      BaseEffect(id: "battle_music_start", priority: 1),
-    ]
-
-    return (newState, effects)
-  }
-
-  private func reduceEndBattle(
-    state: JRPGBattleState,
-    result: BattleResult
-  ) -> (JRPGBattleState, [any Effect]) {
-
-    let finalPhase: BattlePhase
-    switch result {
-    case .victory:
-      finalPhase = .victory
-    case .defeat:
-      finalPhase = .defeat
-    case .escape, .draw:
-      finalPhase = .escape
-    }
-
-    let newState = state.withPhase(finalPhase)
-
-    let effects: [any Effect] = [
-      BaseEffect(id: "battle_end_\(result)", priority: 1),
-      BaseEffect(id: "battle_music_stop", priority: 0),
-    ]
-
-    return (newState, effects)
-  }
-
-  private func reduceEndBattleFlow(
-    state: BattleState,
-    result: BattleResult
-  ) -> (BattleState, [any Effect]) {
-
-    let finalPhase: BattlePhase
-    switch result {
-    case .victory:
-      finalPhase = .victory
-    case .defeat:
-      finalPhase = .defeat
-    case .escape, .draw:
-      finalPhase = .escape
-    }
-
-    let newState = state.withPhase(finalPhase)
-
-    let effects: [any Effect] = [
-      BaseEffect(id: "battle_end_\(result)", priority: 1),
-      BaseEffect(id: "battle_music_stop", priority: 0),
-    ]
-
-    return (newState, effects)
-  }
 
   private func reduceAdvancePhase(
     state: BattleState,

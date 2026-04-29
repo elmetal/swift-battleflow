@@ -2,51 +2,34 @@ import Testing
 
 @testable import swift_battleflow
 
-// MARK: - BattleAction Tests
+// MARK: - Action Tests
 
-@Test("BattleAction metadata properties")
-func testBattleActionMetadata() async throws {
-  let escapeAction = BattleAction.escape(escaper: CombatantID("test"))
+@Test("JRPGAction metadata properties")
+func testJRPGActionMetadata() async throws {
+  let escapeAction = JRPGAction.escape(escaper: CombatantID("test"))
   #expect(escapeAction.metadata.priority == .escape)
   #expect(escapeAction.metadata.isInstant == true)
 
-  let attackAction = BattleAction.attack(
+  let attackAction = JRPGAction.attack(
     attacker: CombatantID("a"), target: CombatantID("b"), damage: 10)
   #expect(attackAction.metadata.priority == .attack)
   #expect(attackAction.metadata.isInstant == false)
 }
 
-@Test("BattleAction classification")
-func testBattleActionClassification() async throws {
-  let startAction = BattleAction.startBattle(players: [], enemies: [])
-  #expect(startAction.isFlowControl == true)
-  #expect(startAction.isCharacterAction == false)
+@Test("BattleAction equality")
+func testBattleActionEquality() async throws {
+  let heroID = CombatantID("hero")
 
-  let attackAction = BattleAction.attack(
-    attacker: CombatantID("a"), target: CombatantID("b"), damage: 10)
-  #expect(attackAction.isFlowControl == false)
-  #expect(attackAction.isCharacterAction == true)
+  #expect(BattleAction.updateCurrentActor(heroID) == .updateCurrentActor(heroID))
+  #expect(BattleAction.incrementTurn != .transitionPhase(.turnSelection))
 }
 
-@Test("BattleAction wraps engine and JRPG actions")
-func testBattleActionWrapping() async throws {
-  let hero = BattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let enemy = BattleFlow.createCharacter(name: "Slime", isPlayer: false)
-
-  let startAction = BattleAction.startBattle(players: [hero], enemies: [enemy])
-  #expect(startAction == .engine(.startBattleFlow(players: [hero], enemies: [enemy])))
-
-  let attackAction = BattleAction.attack(attacker: hero.id, target: enemy.id, damage: 12)
-  #expect(attackAction == .jrpg(.attack(attacker: hero.id, target: enemy.id, damage: 12)))
-}
-
-@Test("Engine action selection does not require JRPG selected action")
-func testEngineActionSelectionIsRuleAgnostic() async throws {
+@Test("Battle action selection is rule agnostic")
+func testBattleActionSelectionIsRuleAgnostic() async throws {
   let heroID = CombatantID("hero")
   let selection = BattleSelection(id: "custom.rule.action")
 
-  let action = BattleAction.engine(.completeSelection(for: heroID, selection: selection))
+  let action = BattleAction.completeSelection(for: heroID, selection: selection)
 
-  #expect(action.isFlowControl == true)
-  #expect(action == .engine(.completeSelection(for: heroID, selection: selection)))
+  #expect(action == .completeSelection(for: heroID, selection: selection))
 }

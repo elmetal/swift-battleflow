@@ -30,9 +30,9 @@ public final class BattleStore {
     self.reducer = BattleReducer()
   }
 
-  /// Dispatches a single action synchronously.
+  /// Dispatches a single engine action synchronously.
   ///
-  /// - Parameter action: The action to process.
+  /// - Parameter action: The engine action to process.
   public func dispatch(_ action: BattleAction) {
     actionHistory.append(action)
 
@@ -42,13 +42,6 @@ public final class BattleStore {
     Task {
       await executeEffects(effects)
     }
-  }
-
-  /// Dispatches a single engine action synchronously.
-  ///
-  /// - Parameter action: The engine action to process.
-  public func dispatch(_ action: EngineAction) {
-    dispatch(.engine(action))
   }
 
   /// Dispatches a sequence of actions in order.

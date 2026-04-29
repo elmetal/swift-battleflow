@@ -21,8 +21,8 @@ func testBattleStoreEngineDispatch() async throws {
   let store = BattleStore()
   let participantID = CombatantID("hero")
 
-  store.dispatch(.engine(.updateCurrentActor(participantID)))
-  store.dispatch(.advanceTurn)
+  store.dispatch(.updateCurrentActor(participantID))
+  store.dispatch(.incrementTurn)
 
   #expect(store.currentActor == nil)
   #expect(store.currentTurn == 1)

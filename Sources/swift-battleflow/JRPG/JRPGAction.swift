@@ -1,5 +1,11 @@
 /// Describes actions that belong to the default JRPG rule set.
 public enum JRPGAction: Sendable, Equatable {
+  /// Starts a JRPG battle session.
+  case startBattle(players: [Combatant], enemies: [Combatant])
+
+  /// Ends the JRPG battle with the supplied result.
+  case endBattle(result: BattleResult)
+
   /// Performs a basic attack.
   case attack(attacker: CombatantID, target: CombatantID, damage: Int)
 
@@ -32,4 +38,24 @@ public enum JRPGAction: Sendable, Equatable {
 
   /// Executes the decision returned by the AI.
   case aiExecuteAction(for: CombatantID, action: SelectedAction)
+}
+
+extension JRPGAction {
+  /// Provides default metadata for the selected action.
+  public var metadata: ActionMetadata {
+    switch self {
+    case .escape:
+      return ActionMetadata(priority: .escape, isInstant: true)
+    case .useItem:
+      return ActionMetadata(priority: .item)
+    case .defend:
+      return ActionMetadata(priority: .defend)
+    case .attack:
+      return ActionMetadata(priority: .attack)
+    case .useSkill:
+      return ActionMetadata(priority: .skill)
+    default:
+      return ActionMetadata()
+    }
+  }
 }

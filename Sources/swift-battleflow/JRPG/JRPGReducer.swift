@@ -7,6 +7,12 @@ public struct JRPGReducer: Sendable {
   public func reduce(state: JRPGBattleState, action: JRPGAction) -> (JRPGBattleState, [any Effect])
   {
     switch action {
+    case .startBattle(let players, let enemies):
+      return reduceStartBattle(state: state, players: players, enemies: enemies)
+
+    case .endBattle(let result):
+      return reduceEndBattle(state: state, result: result)
+
     case .attack(let attacker, let target, let damage):
       return reduceAttack(state: state, attacker: attacker, target: target, damage: damage)
 
@@ -45,6 +51,71 @@ public struct JRPGReducer: Sendable {
 }
 
 extension JRPGReducer {
+
+  // MARK: - Battle Flow Control
+
+  fileprivate func reduceStartBattle(
+    state: JRPGBattleState,
+    players: [Combatant],
+    enemies: [Combatant]
+  ) -> (JRPGBattleState, [any Effect]) {
+
+    var combatants: [CombatantID: Combatant] = [:]
+    var playerIDs: Set<CombatantID> = []
+    var enemyIDs: Set<CombatantID> = []
+
+    for player in players {
+      combatants[player.id] = player
+      playerIDs.insert(player.id)
+    }
+
+    for enemy in enemies {
+      combatants[enemy.id] = enemy
+      enemyIDs.insert(enemy.id)
+    }
+
+    let newState = JRPGBattleState(
+      phase: .turnSelection,
+      combatants: combatants,
+      playerCombatants: playerIDs,
+      enemyCombatants: enemyIDs,
+      turnCount: 1,
+      currentActor: nil,
+      pendingEffects: []
+    )
+
+    let effects: [any Effect] = [
+      BaseEffect(id: "battle_start_animation", priority: 1),
+      BaseEffect(id: "battle_music_start", priority: 1),
+    ]
+
+    return (newState, effects)
+  }
+
+  fileprivate func reduceEndBattle(
+    state: JRPGBattleState,
+    result: BattleResult
+  ) -> (JRPGBattleState, [any Effect]) {
+
+    let finalPhase: BattlePhase
+    switch result {
+    case .victory:
+      finalPhase = .victory
+    case .defeat:
+      finalPhase = .defeat
+    case .escape, .draw:
+      finalPhase = .escape
+    }
+
+    let newState = state.withPhase(finalPhase)
+
+    let effects: [any Effect] = [
+      BaseEffect(id: "battle_end_\(result)", priority: 1),
+      BaseEffect(id: "battle_music_stop", priority: 0),
+    ]
+
+    return (newState, effects)
+  }
 
   // MARK: - Character Actions
 

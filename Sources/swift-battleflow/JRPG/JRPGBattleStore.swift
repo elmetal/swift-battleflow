@@ -12,11 +12,11 @@ public final class JRPGBattleStore {
   /// An optional handler used to execute side effects.
   public var effectHandler: ((any Effect) async -> Void)?
 
-  /// The reducer that encapsulates state transition logic.
-  private let reducer: BattleReducer
+  /// A debug-friendly log of dispatched JRPG actions.
+  private var actionHistory: [JRPGAction] = []
 
-  /// A debug-friendly log of dispatched actions.
-  private var actionHistory: [BattleAction] = []
+  /// A debug-friendly log of dispatched engine actions.
+  private var battleActionHistory: [BattleAction] = []
 
   /// Creates a store using the provided initial JRPG battle state.
   ///
@@ -24,16 +24,29 @@ public final class JRPGBattleStore {
   ///   an empty battle.
   public init(initialState: JRPGBattleState = JRPGBattleState()) {
     self.state = initialState
-    self.reducer = BattleReducer()
   }
 
   /// Dispatches a single action synchronously.
   ///
   /// - Parameter action: The action to process.
-  public func dispatch(_ action: BattleAction) {
+  public func dispatch(_ action: JRPGAction) {
     actionHistory.append(action)
 
-    let (newState, effects) = reducer.reduce(state: state, action: action)
+    let (newState, effects) = JRPGReducer().reduce(state: state, action: action)
+    state = newState
+
+    Task {
+      await executeEffects(effects)
+    }
+  }
+
+  /// Dispatches a single engine action synchronously.
+  ///
+  /// - Parameter action: The engine action to process.
+  public func dispatch(_ action: BattleAction) {
+    battleActionHistory.append(action)
+
+    let (newState, effects) = BattleReducer().reduce(state: state, action: action)
     state = newState
 
     Task {
@@ -44,6 +57,15 @@ public final class JRPGBattleStore {
   /// Dispatches a sequence of actions in order.
   ///
   /// - Parameter actions: The ordered actions to process.
+  public func dispatch(_ actions: [JRPGAction]) {
+    for action in actions {
+      dispatch(action)
+    }
+  }
+
+  /// Dispatches a sequence of engine actions in order.
+  ///
+  /// - Parameter actions: The ordered actions to process.
   public func dispatch(_ actions: [BattleAction]) {
     for action in actions {
       dispatch(action)
@@ -51,6 +73,13 @@ public final class JRPGBattleStore {
   }
 
   /// Dispatches an action from asynchronous contexts.
+  ///
+  /// - Parameter action: The action to process.
+  public func dispatchAsync(_ action: JRPGAction) async {
+    dispatch(action)
+  }
+
+  /// Dispatches an engine action from asynchronous contexts.
   ///
   /// - Parameter action: The action to process.
   public func dispatchAsync(_ action: BattleAction) async {
@@ -64,16 +93,23 @@ public final class JRPGBattleStore {
   public func resetState(_ newState: JRPGBattleState? = nil) {
     state = newState ?? JRPGBattleState()
     actionHistory.removeAll()
+    battleActionHistory.removeAll()
   }
 
   /// Returns a snapshot of the action history.
-  public func getActionHistory() -> [BattleAction] {
+  public func getActionHistory() -> [JRPGAction] {
     return actionHistory
+  }
+
+  /// Returns a snapshot of the engine action history.
+  public func getBattleActionHistory() -> [BattleAction] {
+    return battleActionHistory
   }
 
   /// Clears the recorded action history.
   public func clearActionHistory() {
     actionHistory.removeAll()
+    battleActionHistory.removeAll()
   }
 
   /// Returns the current battle state without mutating it.
@@ -107,9 +143,6 @@ extension JRPGBattleStore {
       print("🎬 Effect executed: \(effect.id) (priority: \(effect.priority))")
     }
 
-    await MainActor.run {
-      dispatch(.executeEffect(effect.id))
-    }
   }
 }
 
@@ -157,19 +190,19 @@ extension JRPGBattleStore {
   ///
   /// - Parameter combatantID: The acting combatant, or `nil` to clear it.
   public func setCurrentActor(_ combatantID: CombatantID?) {
-    dispatch(.setCurrentActor(combatantID))
+    dispatch(.updateCurrentActor(combatantID))
   }
 
   /// Advances the battle to the next turn.
   public func advanceTurn() {
-    dispatch(.advanceTurn)
+    dispatch(.incrementTurn)
   }
 
   /// Moves the battle to a specific phase.
   ///
   /// - Parameter phase: The phase to enter.
   public func advanceToPhase(_ phase: BattlePhase) {
-    dispatch(.advancePhase(phase))
+    dispatch(.transitionPhase(phase))
   }
 }
 
