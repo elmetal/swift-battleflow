@@ -4,7 +4,7 @@ public struct JRPGReducer: Sendable {
     public init() {}
 
     /// Reduces actions that belong to the default JRPG rule set.
-    public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
+    public func reduce(state: BattleState, action: JRPGAction) -> (BattleState, [any Effect]) {
         switch action {
         case .attack(let attacker, let target, let damage):
             return reduceAttack(state: state, attacker: attacker, target: target, damage: damage)
@@ -38,9 +38,6 @@ public struct JRPGReducer: Sendable {
 
         case .aiExecuteAction(let combatantID, let action):
             return reduceAIExecuteAction(state: state, combatantID: combatantID, action: action)
-
-        default:
-            return (state, [])
         }
     }
 }

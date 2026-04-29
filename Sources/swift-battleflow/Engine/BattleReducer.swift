@@ -18,44 +18,49 @@ public struct BattleReducer: Sendable {
     /// - Returns: A tuple containing the next state and any generated effects.
     public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
         switch action {
+        case .engine(let action):
+            return reduce(state: state, action: action)
+
+        case .jrpg(let action):
+            return jrpgReducer.reduce(state: state, action: action)
+        }
+    }
+
+    /// Reduces engine-level actions.
+    public func reduce(state: BattleState, action: EngineAction) -> (BattleState, [any Effect]) {
+        switch action {
 
         // MARK: - Battle Flow Control
-        case .startBattle(let players, let enemies):
+        case .startBattleFlow(let players, let enemies):
             return reduceStartBattle(state: state, players: players, enemies: enemies)
 
-        case .endBattle(let result):
+        case .endBattleFlow(let result):
             return reduceEndBattle(state: state, result: result)
             
-        case .advancePhase(let newPhase):
+        case .transitionPhase(let newPhase):
             return reduceAdvancePhase(state: state, newPhase: newPhase)
             
-        case .advanceTurn:
+        case .incrementTurn:
             return reduceAdvanceTurn(state: state)
-            
-        // MARK: - JRPG Rules
-        case .attack, .useSkill, .useItem, .defend, .escape,
-             .changeHP, .changeMP, .applyStatusEffect, .removeStatusEffect,
-             .aiDecideAction, .aiExecuteAction:
-            return jrpgReducer.reduce(state: state, action: action)
-            
+
         // MARK: - Turn Coordination
-        case .setCurrentActor(let actorID):
+        case .updateCurrentActor(let actorID):
             return reduceSetCurrentActor(state: state, actorID: actorID)
             
-        case .beginActionSelection(let combatantID):
+        case .beginSelection(let combatantID):
             return reduceBeginActionSelection(state: state, combatantID: combatantID)
             
-        case .completeActionSelection(let combatantID, let action):
+        case .completeSelection(let combatantID, let action):
             return reduceCompleteActionSelection(state: state, combatantID: combatantID, action: action)
             
         // MARK: - Effect Management
-        case .addEffects(let effectIDs):
+        case .enqueueEffects(let effectIDs):
             return reduceAddEffects(state: state, effectIDs: effectIDs)
             
-        case .executeEffect(let effectID):
+        case .markEffectExecuted(let effectID):
             return reduceExecuteEffect(state: state, effectID: effectID)
             
-        case .clearEffects:
+        case .removeAllEffects:
             return reduceClearEffects(state: state)
             
         }

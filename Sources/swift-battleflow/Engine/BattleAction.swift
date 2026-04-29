@@ -1,117 +1,169 @@
-/// Describes every action that can occur during a battle.
-///
-/// Each case represents an event that triggers a state transition within the
-/// state-store architecture.
-public enum BattleAction: Sendable {
-
-    // MARK: - Battle Flow Control
+/// Describes engine-level actions that coordinate battle flow and effects.
+public enum EngineAction: Sendable, Equatable {
     /// Starts a battle session.
-    case startBattle(players: [Combatant], enemies: [Combatant])
+    case startBattleFlow(players: [Combatant], enemies: [Combatant])
 
     /// Ends the battle with the supplied result.
-    case endBattle(result: BattleResult)
+    case endBattleFlow(result: BattleResult)
 
     /// Advances to the next phase in the battle flow.
-    case advancePhase(BattlePhase)
+    case transitionPhase(BattlePhase)
 
     /// Moves the combat timeline to the next turn.
-    case advanceTurn
+    case incrementTurn
 
-    // MARK: - Character Actions
-    /// Performs a basic attack.
-    case attack(attacker: CombatantID, target: CombatantID, damage: Int)
-
-    /// Uses a skill against one or more targets.
-    case useSkill(user: CombatantID, skillID: String, targets: [CombatantID])
-
-    /// Uses an item, optionally selecting a target.
-    case useItem(user: CombatantID, itemID: String, target: CombatantID?)
-
-    /// Raises defenses for the specified combatant.
-    case defend(defender: CombatantID)
-
-    /// Attempts to flee from the encounter.
-    case escape(escaper: CombatantID)
-
-    // MARK: - Status Adjustments
-    /// Modifies the target's hit points by a positive or negative amount.
-    case changeHP(target: CombatantID, amount: Int)
-
-    /// Modifies the target's magic points by a positive or negative amount.
-    case changeMP(target: CombatantID, amount: Int)
-
-    /// Applies a named status effect for a given duration.
-    case applyStatusEffect(target: CombatantID, effect: String, duration: Int)
-
-    /// Removes a specific status effect from the target.
-    case removeStatusEffect(target: CombatantID, effect: String)
-
-    // MARK: - Turn Coordination
     /// Sets the combatant that is currently acting.
-    case setCurrentActor(CombatantID?)
+    case updateCurrentActor(CombatantID?)
 
     /// Signals the beginning of an action selection phase for a combatant.
-    case beginActionSelection(for: CombatantID)
+    case beginSelection(for: CombatantID)
 
     /// Completes an action selection with the specified decision.
-    case completeActionSelection(for: CombatantID, action: SelectedAction)
+    case completeSelection(for: CombatantID, action: SelectedAction)
 
-    // MARK: - Effect Management
     /// Queues one or more side-effect identifiers for later execution.
-    case addEffects([String])  // Effect identifiers.
+    case enqueueEffects([String])  // Effect identifiers.
 
     /// Executes a previously enqueued effect.
-    case executeEffect(String)  // Effect identifier.
+    case markEffectExecuted(String)  // Effect identifier.
 
     /// Clears all pending effects from the queue.
-    case clearEffects
-
-    // MARK: - AI Coordination
-    /// Requests an AI-controlled combatant to select an action.
-    case aiDecideAction(for: CombatantID)
-
-    /// Executes the decision returned by the AI.
-    case aiExecuteAction(for: CombatantID, action: SelectedAction)
+    case removeAllEffects
 }
 
-extension BattleAction: Equatable {
-    public static func == (lhs: BattleAction, rhs: BattleAction) -> Bool {
-        switch (lhs, rhs) {
-        case (.startBattle(let lp, let le), .startBattle(let rp, let re)):
-            return lp == rp && le == re
-        case (.endBattle(let lr), .endBattle(let rr)):
-            return lr == rr
-        case (.advancePhase(let lp), .advancePhase(let rp)):
-            return lp == rp
-        case (.advanceTurn, .advanceTurn):
-            return true
-        case (.attack(let la, let lt, let ld), .attack(let ra, let rt, let rd)):
-            return la == ra && lt == rt && ld == rd
-        case (.changeHP(let lt, let la), .changeHP(let rt, let ra)):
-            return lt == rt && la == ra
-        case (.addEffects(let le), .addEffects(let re)):
-            return le == re
-        case (.executeEffect(let le), .executeEffect(let re)):
-            return le == re
-        case (.clearEffects, .clearEffects):
-            return true
-        default:
-            return false
-        }
+/// Describes every action that can occur during a battle.
+///
+/// This compatibility wrapper keeps the public `BattleAction.attack(...)`
+/// spelling while separating engine actions from JRPG rule actions internally.
+public enum BattleAction: Sendable, Equatable {
+    case engine(EngineAction)
+    case jrpg(JRPGAction)
+}
+
+extension BattleAction {
+
+    // MARK: - Engine Factories
+
+    public static func startBattle(players: [Combatant], enemies: [Combatant]) -> BattleAction {
+        .engine(.startBattleFlow(players: players, enemies: enemies))
     }
-    
+
+    public static func endBattle(result: BattleResult) -> BattleAction {
+        .engine(.endBattleFlow(result: result))
+    }
+
+    public static func advancePhase(_ phase: BattlePhase) -> BattleAction {
+        .engine(.transitionPhase(phase))
+    }
+
+    public static var advanceTurn: BattleAction {
+        .engine(.incrementTurn)
+    }
+
+    public static func setCurrentActor(_ actorID: CombatantID?) -> BattleAction {
+        .engine(.updateCurrentActor(actorID))
+    }
+
+    public static func beginActionSelection(for combatantID: CombatantID) -> BattleAction {
+        .engine(.beginSelection(for: combatantID))
+    }
+
+    public static func completeActionSelection(
+        for combatantID: CombatantID,
+        action: SelectedAction
+    ) -> BattleAction {
+        .engine(.completeSelection(for: combatantID, action: action))
+    }
+
+    public static func addEffects(_ effectIDs: [String]) -> BattleAction {
+        .engine(.enqueueEffects(effectIDs))
+    }
+
+    public static func executeEffect(_ effectID: String) -> BattleAction {
+        .engine(.markEffectExecuted(effectID))
+    }
+
+    public static var clearEffects: BattleAction {
+        .engine(.removeAllEffects)
+    }
+
+    // MARK: - JRPG Factories
+
+    public static func attack(
+        attacker: CombatantID,
+        target: CombatantID,
+        damage: Int
+    ) -> BattleAction {
+        .jrpg(.attack(attacker: attacker, target: target, damage: damage))
+    }
+
+    public static func useSkill(
+        user: CombatantID,
+        skillID: String,
+        targets: [CombatantID]
+    ) -> BattleAction {
+        .jrpg(.useSkill(user: user, skillID: skillID, targets: targets))
+    }
+
+    public static func useItem(
+        user: CombatantID,
+        itemID: String,
+        target: CombatantID?
+    ) -> BattleAction {
+        .jrpg(.useItem(user: user, itemID: itemID, target: target))
+    }
+
+    public static func defend(defender: CombatantID) -> BattleAction {
+        .jrpg(.defend(defender: defender))
+    }
+
+    public static func escape(escaper: CombatantID) -> BattleAction {
+        .jrpg(.escape(escaper: escaper))
+    }
+
+    public static func changeHP(target: CombatantID, amount: Int) -> BattleAction {
+        .jrpg(.changeHP(target: target, amount: amount))
+    }
+
+    public static func changeMP(target: CombatantID, amount: Int) -> BattleAction {
+        .jrpg(.changeMP(target: target, amount: amount))
+    }
+
+    public static func applyStatusEffect(
+        target: CombatantID,
+        effect: String,
+        duration: Int
+    ) -> BattleAction {
+        .jrpg(.applyStatusEffect(target: target, effect: effect, duration: duration))
+    }
+
+    public static func removeStatusEffect(target: CombatantID, effect: String) -> BattleAction {
+        .jrpg(.removeStatusEffect(target: target, effect: effect))
+    }
+
+    public static func aiDecideAction(for combatantID: CombatantID) -> BattleAction {
+        .jrpg(.aiDecideAction(for: combatantID))
+    }
+
+    public static func aiExecuteAction(
+        for combatantID: CombatantID,
+        action: SelectedAction
+    ) -> BattleAction {
+        .jrpg(.aiExecuteAction(for: combatantID, action: action))
+    }
+
     /// Provides default metadata for the selected action.
     public var metadata: ActionMetadata {
         switch self {
-        case .escape:
+        case .jrpg(.escape):
             return ActionMetadata(priority: .escape, isInstant: true)
-        case .useItem:
+        case .jrpg(.useItem):
             return ActionMetadata(priority: .item)
-        case .defend:
+        case .jrpg(.defend):
             return ActionMetadata(priority: .defend)
-        case .attack:
+        case .jrpg(.attack):
             return ActionMetadata(priority: .attack)
-        case .useSkill:
+        case .jrpg(.useSkill):
             return ActionMetadata(priority: .skill)
         default:
             return ActionMetadata()
@@ -121,8 +173,9 @@ extension BattleAction: Equatable {
     /// Indicates whether the action manipulates the combat flow.
     public var isFlowControl: Bool {
         switch self {
-        case .startBattle, .endBattle, .advancePhase, .advanceTurn,
-             .setCurrentActor, .beginActionSelection, .completeActionSelection:
+        case .engine(.startBattleFlow), .engine(.endBattleFlow), .engine(.transitionPhase),
+             .engine(.incrementTurn), .engine(.updateCurrentActor),
+             .engine(.beginSelection), .engine(.completeSelection):
             return true
         default:
             return false
@@ -132,7 +185,8 @@ extension BattleAction: Equatable {
     /// Indicates whether the action is driven by a combatant's behavior.
     public var isCharacterAction: Bool {
         switch self {
-        case .attack, .useSkill, .useItem, .defend, .escape:
+        case .jrpg(.attack), .jrpg(.useSkill), .jrpg(.useItem),
+             .jrpg(.defend), .jrpg(.escape):
             return true
         default:
             return false
