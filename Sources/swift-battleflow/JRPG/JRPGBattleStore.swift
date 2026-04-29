@@ -1,16 +1,13 @@
 import Foundation
 import Observation
 
-/// The central hub of the engine state-store pattern.
-///
-/// ``BattleStore`` owns rule-agnostic battle state, processes engine actions,
-/// and coordinates effect execution.
+/// A battle store for the default JRPG rule set.
 @Observable
 @MainActor
-public final class BattleStore {
+public final class JRPGBattleStore {
 
-  /// The current battle state.
-  public private(set) var state: BattleState
+  /// The current JRPG battle state.
+  public private(set) var state: JRPGBattleState
 
   /// An optional handler used to execute side effects.
   public var effectHandler: ((any Effect) async -> Void)?
@@ -21,11 +18,11 @@ public final class BattleStore {
   /// A debug-friendly log of dispatched actions.
   private var actionHistory: [BattleAction] = []
 
-  /// Creates a store using the provided initial engine state.
+  /// Creates a store using the provided initial JRPG battle state.
   ///
   /// - Parameter initialState: The starting state. The default value produces
   ///   an empty battle.
-  public init(initialState: BattleState = BattleState()) {
+  public init(initialState: JRPGBattleState = JRPGBattleState()) {
     self.state = initialState
     self.reducer = BattleReducer()
   }
@@ -42,13 +39,6 @@ public final class BattleStore {
     Task {
       await executeEffects(effects)
     }
-  }
-
-  /// Dispatches a single engine action synchronously.
-  ///
-  /// - Parameter action: The engine action to process.
-  public func dispatch(_ action: EngineAction) {
-    dispatch(.engine(action))
   }
 
   /// Dispatches a sequence of actions in order.
@@ -70,9 +60,9 @@ public final class BattleStore {
   /// Resets the state to the supplied value or a fresh battle.
   ///
   /// - Parameter newState: The replacement state. When omitted, a new
-  ///   ``BattleState`` instance is used.
-  public func resetState(_ newState: BattleState? = nil) {
-    state = newState ?? BattleState()
+  ///   ``JRPGBattleState`` instance is used.
+  public func resetState(_ newState: JRPGBattleState? = nil) {
+    state = newState ?? JRPGBattleState()
     actionHistory.removeAll()
   }
 
@@ -87,14 +77,14 @@ public final class BattleStore {
   }
 
   /// Returns the current battle state without mutating it.
-  public func getStateSnapshot() -> BattleState {
+  public func getStateSnapshot() -> JRPGBattleState {
     return state
   }
 }
 
 // MARK: - Effect Execution
 
-extension BattleStore {
+extension JRPGBattleStore {
 
   /// Executes the supplied effects in priority order.
   ///
@@ -118,42 +108,88 @@ extension BattleStore {
     }
 
     await MainActor.run {
-      dispatch(.markEffectExecuted(effect.id))
+      dispatch(.executeEffect(effect.id))
     }
   }
 }
 
 // MARK: - Convenience API
 
-extension BattleStore {
+extension JRPGBattleStore {
 
-  /// Updates the currently acting participant.
+  /// Starts a battle with the provided player and enemy rosters.
   ///
-  /// - Parameter participantID: The acting participant, or `nil` to clear it.
-  public func setCurrentActor(_ participantID: CombatantID?) {
-    dispatch(.updateCurrentActor(participantID))
+  /// - Parameters:
+  ///   - players: The player-controlled combatants.
+  ///   - enemies: The opposing combatants.
+  public func startBattle(players: [Combatant], enemies: [Combatant]) {
+    dispatch(.startBattle(players: players, enemies: enemies))
+  }
+
+  /// Ends the battle with the specified result.
+  ///
+  /// - Parameter result: The resolved outcome.
+  public func endBattle(with result: BattleResult) {
+    dispatch(.endBattle(result: result))
+  }
+
+  /// Performs an attack action with precomputed damage.
+  ///
+  /// - Parameters:
+  ///   - attacker: The attacking combatant.
+  ///   - target: The combatant receiving the attack.
+  ///   - damage: The amount of damage to apply.
+  public func performAttack(attacker: CombatantID, target: CombatantID, damage: Int) {
+    dispatch(.attack(attacker: attacker, target: target, damage: damage))
+  }
+
+  /// Adjusts a combatant's hit points.
+  ///
+  /// - Parameters:
+  ///   - target: The combatant receiving the change.
+  ///   - amount: The delta to apply. Positive values heal, negative values
+  ///     inflict damage.
+  public func changeHP(target: CombatantID, amount: Int) {
+    dispatch(.changeHP(target: target, amount: amount))
+  }
+
+  /// Updates the currently acting combatant.
+  ///
+  /// - Parameter combatantID: The acting combatant, or `nil` to clear it.
+  public func setCurrentActor(_ combatantID: CombatantID?) {
+    dispatch(.setCurrentActor(combatantID))
   }
 
   /// Advances the battle to the next turn.
   public func advanceTurn() {
-    dispatch(.incrementTurn)
+    dispatch(.advanceTurn)
   }
 
   /// Moves the battle to a specific phase.
   ///
   /// - Parameter phase: The phase to enter.
   public func advanceToPhase(_ phase: BattlePhase) {
-    dispatch(.transitionPhase(phase))
+    dispatch(.advancePhase(phase))
   }
 }
 
 // MARK: - State Queries
 
-extension BattleStore {
+extension JRPGBattleStore {
 
   /// Indicates whether the battle has ended.
   public var isBattleEnded: Bool {
     return state.isBattleEnded
+  }
+
+  /// Returns the player-controlled combatants that are still active.
+  public var alivePlayers: [Combatant] {
+    return state.alivePlayers
+  }
+
+  /// Returns the enemy combatants that are still active.
+  public var aliveEnemies: [Combatant] {
+    return state.aliveEnemies
   }
 
   /// The battle's current phase.
@@ -166,38 +202,50 @@ extension BattleStore {
     return state.turnCount
   }
 
-  /// The participant currently performing an action.
+  /// The combatant currently performing an action.
   public var currentActor: CombatantID? {
     return state.currentActor
   }
 
-  /// Looks up a participant by identifier.
+  /// Looks up a combatant by identifier.
   ///
   /// - Parameter id: The identifier to search for.
-  /// - Returns: The matching participant, or `nil` when not found.
-  public func getParticipant(_ id: CombatantID) -> BattleParticipant? {
-    return state.participants[id]
+  /// - Returns: The matching combatant, or `nil` when not found.
+  public func getCombatant(_ id: CombatantID) -> Combatant? {
+    return state.combatants[id]
   }
 
-  /// Returns whether the participant belongs to the provided group.
-  public func isParticipant(_ id: CombatantID, in group: BattleGroupID) -> Bool {
-    return state.participantIDs(in: group).contains(id)
+  /// Determines whether the identifier references a player-controlled combatant.
+  ///
+  /// - Parameter id: The identifier to inspect.
+  /// - Returns: ``true`` when the combatant is controlled by the player.
+  public func isPlayerCombatant(_ id: CombatantID) -> Bool {
+    return state.playerCombatants.contains(id)
+  }
+
+  /// Determines whether the identifier references an enemy combatant.
+  ///
+  /// - Parameter id: The identifier to inspect.
+  /// - Returns: ``true`` when the combatant is an enemy.
+  public func isEnemyCombatant(_ id: CombatantID) -> Bool {
+    return state.enemyCombatants.contains(id)
   }
 }
 
 // MARK: - Debug Utilities
 
-extension BattleStore {
+extension JRPGBattleStore {
 
   /// Prints a snapshot of the current state to the console.
   public func logCurrentState() {
-    print("=== Battle State ===")
+    print("=== JRPG Battle State ===")
     print("Phase: \(state.phase)")
     print("Turn: \(state.turnCount)")
     print("Current Actor: \(state.currentActor?.value ?? "none")")
-    print("Participants: \(state.participants.count)")
+    print("Players: \(state.alivePlayers.count)/\(state.playerCombatants.count) alive")
+    print("Enemies: \(state.aliveEnemies.count)/\(state.enemyCombatants.count) alive")
     print("Pending Effects: \(state.pendingEffects.count)")
-    print("==================")
+    print("=========================")
   }
 
   /// Prints the recorded action history to the console.

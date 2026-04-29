@@ -7,7 +7,7 @@ import Testing
 @Test("Reducer handles start battle action")
 func testReducerStartBattle() async throws {
   let reducer = BattleReducer()
-  let initialState = BattleState()
+  let initialState = JRPGBattleState()
 
   let hero = BattleFlow.createCharacter(name: "Hero", isPlayer: true)
   let enemy = BattleFlow.createCharacter(name: "Goblin", isPlayer: false)
@@ -46,7 +46,7 @@ func testReducerAttack() async throws {
   let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
   let enemy = BattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
-  let state = BattleState(
+  let state = JRPGBattleState(
     combatants: [hero.id: hero, enemy.id: enemy],
     playerCombatants: [hero.id],
     enemyCombatants: [enemy.id]
@@ -66,7 +66,7 @@ func testReducerChangeHP() async throws {
   let reducer = BattleReducer()
 
   let hero = BattleFlow.createCharacter(name: "Hero", hp: 50, maxHP: 100, isPlayer: true)
-  let state = BattleState(
+  let state = JRPGBattleState(
     combatants: [hero.id: hero],
     playerCombatants: [hero.id]
   )
@@ -89,7 +89,7 @@ func testReducerMPChangeAndEscape() async throws {
   let reducer = BattleReducer()
 
   let hero = BattleFlow.createCharacter(name: "Mage", mp: 30, maxMP: 40, isPlayer: true)
-  let state = BattleState(
+  let state = JRPGBattleState(
     phase: .actionExecution,
     combatants: [hero.id: hero],
     playerCombatants: [hero.id],
@@ -128,7 +128,7 @@ func testJRPGReducerActionDirectly() async throws {
 
   let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
   let enemy = BattleFlow.createCharacter(name: "Slime", hp: 40, isPlayer: false)
-  let state = BattleState(
+  let state = JRPGBattleState(
     combatants: [hero.id: hero, enemy.id: enemy],
     playerCombatants: [hero.id],
     enemyCombatants: [enemy.id]

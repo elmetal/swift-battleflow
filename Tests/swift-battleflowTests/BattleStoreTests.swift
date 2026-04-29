@@ -15,10 +15,23 @@ func testBattleStoreInitialization() async throws {
   #expect(store.isBattleEnded == false)
 }
 
-@Test("BattleStore start battle functionality")
+@Test("BattleStore dispatches engine actions")
 @MainActor
-func testBattleStoreStartBattle() async throws {
+func testBattleStoreEngineDispatch() async throws {
   let store = BattleStore()
+  let participantID = CombatantID("hero")
+
+  store.dispatch(.engine(.updateCurrentActor(participantID)))
+  store.dispatch(.advanceTurn)
+
+  #expect(store.currentActor == nil)
+  #expect(store.currentTurn == 1)
+}
+
+@Test("JRPGBattleStore start battle functionality")
+@MainActor
+func testJRPGBattleStoreStartBattle() async throws {
+  let store = JRPGBattleStore()
 
   let hero = BattleFlow.createCharacter(name: "Hero", isPlayer: true)
   let enemy = BattleFlow.createCharacter(name: "Goblin", isPlayer: false)
@@ -38,10 +51,10 @@ func testBattleStoreStartBattle() async throws {
   #expect(store.isEnemyCombatant(enemy.id) == true)
 }
 
-@Test("BattleStore attack functionality")
+@Test("JRPGBattleStore attack functionality")
 @MainActor
-func testBattleStoreAttack() async throws {
-  let store = BattleStore()
+func testJRPGBattleStoreAttack() async throws {
+  let store = JRPGBattleStore()
 
   let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
   let enemy = BattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)

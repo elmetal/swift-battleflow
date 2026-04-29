@@ -20,19 +20,35 @@ public struct CombatantID: Hashable, Sendable {
   }
 }
 
+/// Identifies a participant group in a battle.
+public struct BattleGroupID: Hashable, Sendable, Equatable {
+  public let value: String
+
+  public init(_ value: String) {
+    precondition(!value.isEmpty, "BattleGroupID value must not be empty.")
+    self.value = value
+  }
+}
+
+/// Describes a rule-agnostic participant known by the battle engine.
+public struct BattleParticipant: Sendable, Equatable {
+  public let id: CombatantID
+
+  public init(id: CombatantID) {
+    self.id = id
+  }
+}
+
 /// An immutable structure that stores the entire battle state.
 public struct BattleState: Sendable, Equatable {
   /// The current phase of the battle.
   public let phase: BattlePhase
 
-  /// A lookup table of all combatants.
-  public let combatants: [CombatantID: Combatant]
+  /// A lookup table of all engine-level participants.
+  public let participants: [CombatantID: BattleParticipant]
 
-  /// The set of player-controlled combatant identifiers.
-  public let playerCombatants: Set<CombatantID>
-
-  /// The set of enemy combatant identifiers.
-  public let enemyCombatants: Set<CombatantID>
+  /// Participant groups known to the engine.
+  public let groups: [BattleGroupID: Set<CombatantID>]
 
   /// The current turn counter.
   public let turnCount: Int
@@ -45,17 +61,15 @@ public struct BattleState: Sendable, Equatable {
 
   public init(
     phase: BattlePhase = .preparation,
-    combatants: [CombatantID: Combatant] = [:],
-    playerCombatants: Set<CombatantID> = [],
-    enemyCombatants: Set<CombatantID> = [],
+    participants: [CombatantID: BattleParticipant] = [:],
+    groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
     pendingEffects: [any Effect] = []
   ) {
     self.phase = phase
-    self.combatants = combatants
-    self.playerCombatants = playerCombatants
-    self.enemyCombatants = enemyCombatants
+    self.participants = participants
+    self.groups = groups
     self.turnCount = turnCount
     self.currentActor = currentActor
     self.pendingEffects = pendingEffects
@@ -71,43 +85,40 @@ public struct BattleState: Sendable, Equatable {
     }
   }
 
-  /// Returns the player-controlled combatants that are still active.
-  public var alivePlayers: [Combatant] {
-    playerCombatants.compactMap { id in
-      combatants[id]?.stats.isDefeated == false ? combatants[id] : nil
-    }
-  }
+  /// Returns a new state with the provided participant updated or inserted.
+  public func withParticipant(
+    _ participant: BattleParticipant,
+    in group: BattleGroupID? = nil
+  ) -> BattleState {
+    var newParticipants = participants
+    var newGroups = groups
+    newParticipants[participant.id] = participant
 
-  /// Returns the enemy combatants that are still active.
-  public var aliveEnemies: [Combatant] {
-    enemyCombatants.compactMap { id in
-      combatants[id]?.stats.isDefeated == false ? combatants[id] : nil
+    if let group {
+      newGroups[group, default: []].insert(participant.id)
     }
-  }
-
-  /// Returns a new state with the provided combatant updated or inserted.
-  public func withCombatant(_ combatant: Combatant) -> BattleState {
-    var newCombatants = combatants
-    newCombatants[combatant.id] = combatant
 
     return BattleState(
       phase: phase,
-      combatants: newCombatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants,
+      participants: newParticipants,
+      groups: newGroups,
       turnCount: turnCount,
       currentActor: currentActor,
       pendingEffects: pendingEffects
     )
   }
 
+  /// Returns the participant identifiers in a group.
+  public func participantIDs(in group: BattleGroupID) -> Set<CombatantID> {
+    groups[group] ?? []
+  }
+
   /// Returns a new state with a different battle phase.
   public func withPhase(_ newPhase: BattlePhase) -> BattleState {
     BattleState(
       phase: newPhase,
-      combatants: combatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants,
+      participants: participants,
+      groups: groups,
       turnCount: turnCount,
       currentActor: currentActor,
       pendingEffects: pendingEffects
@@ -118,9 +129,8 @@ public struct BattleState: Sendable, Equatable {
   public func withEffects(_ effects: [any Effect]) -> BattleState {
     BattleState(
       phase: phase,
-      combatants: combatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants,
+      participants: participants,
+      groups: groups,
       turnCount: turnCount,
       currentActor: currentActor,
       pendingEffects: pendingEffects + effects
@@ -131,9 +141,8 @@ public struct BattleState: Sendable, Equatable {
   public func withClearedEffects() -> BattleState {
     BattleState(
       phase: phase,
-      combatants: combatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants,
+      participants: participants,
+      groups: groups,
       turnCount: turnCount,
       currentActor: currentActor,
       pendingEffects: []
@@ -148,8 +157,7 @@ extension BattleState {
   /// this stage. Extend this logic if more granular comparisons are needed in
   /// the future.
   public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
-    lhs.phase == rhs.phase && lhs.combatants == rhs.combatants
-      && lhs.playerCombatants == rhs.playerCombatants && lhs.enemyCombatants == rhs.enemyCombatants
+    lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
       && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
       && lhs.pendingEffects.count == rhs.pendingEffects.count
     // Note: Extend this comparison with detailed effect matching when needed.

@@ -7,7 +7,7 @@ import Testing
 @Test("Full battle flow integration")
 @MainActor
 func testFullBattleFlow() async throws {
-  let store = BattleStore()
+  let store = JRPGBattleStore()
 
   let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, attack: 25, isPlayer: true)
   let goblin = BattleFlow.createCharacter(name: "Goblin", hp: 50, attack: 15, isPlayer: false)

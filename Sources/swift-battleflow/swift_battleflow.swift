@@ -16,13 +16,24 @@
 /// The primary entry point for the BattleFlow library.
 public struct BattleFlow {
 
-  /// Creates a new battle store configured for the provided initial state.
+  /// Creates a new JRPG battle store configured for the provided initial state.
   ///
   /// - Parameter initialState: The starting state for the battle. The default
   ///   value creates an empty battle.
-  /// - Returns: A fully initialized ``BattleStore`` ready to process actions.
+  /// - Returns: A fully initialized ``JRPGBattleStore`` ready to process actions.
   @MainActor
-  public static func createStore(initialState: BattleState = BattleState()) -> BattleStore {
+  public static func createStore(
+    initialState: JRPGBattleState = JRPGBattleState()
+  ) -> JRPGBattleStore {
+    return JRPGBattleStore(initialState: initialState)
+  }
+
+  /// Creates a rule-agnostic engine battle store.
+  ///
+  /// - Parameter initialState: The starting engine state.
+  /// - Returns: A fully initialized ``BattleStore`` ready to process engine actions.
+  @MainActor
+  public static func createEngineStore(initialState: BattleState = BattleState()) -> BattleStore {
     return BattleStore(initialState: initialState)
   }
 
