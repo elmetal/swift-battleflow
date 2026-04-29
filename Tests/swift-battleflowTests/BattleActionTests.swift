@@ -24,3 +24,15 @@ func testBattleActionClassification() async throws {
     #expect(attackAction.isFlowControl == false)
     #expect(attackAction.isCharacterAction == true)
 }
+
+@Test("BattleAction wraps engine and JRPG actions")
+func testBattleActionWrapping() async throws {
+    let hero = BattleFlow.createCharacter(name: "Hero", isPlayer: true)
+    let enemy = BattleFlow.createCharacter(name: "Slime", isPlayer: false)
+
+    let startAction = BattleAction.startBattle(players: [hero], enemies: [enemy])
+    #expect(startAction == .engine(.startBattleFlow(players: [hero], enemies: [enemy])))
+
+    let attackAction = BattleAction.attack(attacker: hero.id, target: enemy.id, damage: 12)
+    #expect(attackAction == .jrpg(.attack(attacker: hero.id, target: enemy.id, damage: 12)))
+}

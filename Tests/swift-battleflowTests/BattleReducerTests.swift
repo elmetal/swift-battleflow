@@ -106,3 +106,35 @@ func testReducerMPChangeAndEscape() async throws {
     #expect(escapeState.phase == .escape)
     #expect(escapeEffects.contains { ($0 as? BaseEffect)?.id == "escape_success" })
 }
+
+@Test("Reducer handles engine actions directly")
+func testReducerEngineActionDirectly() async throws {
+    let reducer = BattleReducer()
+    let state = BattleState(phase: .turnSelection, turnCount: 1)
+
+    let (newState, effects) = reducer.reduce(state: state, action: EngineAction.incrementTurn)
+
+    #expect(newState.turnCount == 2)
+    #expect(effects.contains { ($0 as? BaseEffect)?.id == "turn_advance" })
+}
+
+@Test("JRPGReducer handles JRPG actions directly")
+func testJRPGReducerActionDirectly() async throws {
+    let reducer = JRPGReducer()
+
+    let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
+    let enemy = BattleFlow.createCharacter(name: "Slime", hp: 40, isPlayer: false)
+    let state = BattleState(
+        combatants: [hero.id: hero, enemy.id: enemy],
+        playerCombatants: [hero.id],
+        enemyCombatants: [enemy.id]
+    )
+
+    let (newState, effects) = reducer.reduce(
+        state: state,
+        action: JRPGAction.attack(attacker: hero.id, target: enemy.id, damage: 15)
+    )
+
+    #expect(newState.combatants[enemy.id]?.stats.hp == 25)
+    #expect(effects.contains { ($0 as? BaseEffect)?.id == "damage_effect_\(enemy.id.value)_15" })
+}
