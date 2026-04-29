@@ -30,10 +30,12 @@ func testBattleStateParticipants() async throws {
 
 @Test("JRPGBattleState derived collections and updates")
 func testJRPGBattleStateDerivedCollections() async throws {
-  let alivePlayer = BattleFlow.createCharacter(name: "Hero", hp: 80, isPlayer: true)
-  let defeatedPlayer = BattleFlow.createCharacter(name: "Knight", hp: 0, maxHP: 80, isPlayer: true)
-  let aliveEnemy = BattleFlow.createCharacter(name: "Goblin", hp: 40, isPlayer: false)
-  let defeatedEnemy = BattleFlow.createCharacter(name: "Orc", hp: 0, maxHP: 120, isPlayer: false)
+  let alivePlayer = JRPGBattleFlow.createCharacter(name: "Hero", hp: 80, isPlayer: true)
+  let defeatedPlayer = JRPGBattleFlow.createCharacter(
+    name: "Knight", hp: 0, maxHP: 80, isPlayer: true)
+  let aliveEnemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 40, isPlayer: false)
+  let defeatedEnemy = JRPGBattleFlow.createCharacter(
+    name: "Orc", hp: 0, maxHP: 120, isPlayer: false)
 
   let state = JRPGBattleState(
     phase: .turnSelection,

@@ -15,9 +15,6 @@ public final class JRPGBattleStore {
   /// A debug-friendly log of dispatched JRPG actions.
   private var actionHistory: [JRPGAction] = []
 
-  /// A debug-friendly log of dispatched engine actions.
-  private var battleActionHistory: [BattleAction] = []
-
   /// Creates a store using the provided initial JRPG battle state.
   ///
   /// - Parameter initialState: The starting state. The default value produces
@@ -40,33 +37,10 @@ public final class JRPGBattleStore {
     }
   }
 
-  /// Dispatches a single engine action synchronously.
-  ///
-  /// - Parameter action: The engine action to process.
-  public func dispatch(_ action: BattleAction) {
-    battleActionHistory.append(action)
-
-    let (newState, effects) = BattleReducer().reduce(state: state, action: action)
-    state = newState
-
-    Task {
-      await executeEffects(effects)
-    }
-  }
-
   /// Dispatches a sequence of actions in order.
   ///
   /// - Parameter actions: The ordered actions to process.
   public func dispatch(_ actions: [JRPGAction]) {
-    for action in actions {
-      dispatch(action)
-    }
-  }
-
-  /// Dispatches a sequence of engine actions in order.
-  ///
-  /// - Parameter actions: The ordered actions to process.
-  public func dispatch(_ actions: [BattleAction]) {
     for action in actions {
       dispatch(action)
     }
@@ -79,13 +53,6 @@ public final class JRPGBattleStore {
     dispatch(action)
   }
 
-  /// Dispatches an engine action from asynchronous contexts.
-  ///
-  /// - Parameter action: The action to process.
-  public func dispatchAsync(_ action: BattleAction) async {
-    dispatch(action)
-  }
-
   /// Resets the state to the supplied value or a fresh battle.
   ///
   /// - Parameter newState: The replacement state. When omitted, a new
@@ -93,7 +60,6 @@ public final class JRPGBattleStore {
   public func resetState(_ newState: JRPGBattleState? = nil) {
     state = newState ?? JRPGBattleState()
     actionHistory.removeAll()
-    battleActionHistory.removeAll()
   }
 
   /// Returns a snapshot of the action history.
@@ -101,20 +67,23 @@ public final class JRPGBattleStore {
     return actionHistory
   }
 
-  /// Returns a snapshot of the engine action history.
-  public func getBattleActionHistory() -> [BattleAction] {
-    return battleActionHistory
-  }
-
   /// Clears the recorded action history.
   public func clearActionHistory() {
     actionHistory.removeAll()
-    battleActionHistory.removeAll()
   }
 
   /// Returns the current battle state without mutating it.
   public func getStateSnapshot() -> JRPGBattleState {
     return state
+  }
+
+  private func applyBattleAction(_ action: BattleAction) {
+    let (engineState, effects) = BattleReducer().reduce(state: state.engineState, action: action)
+    state = state.withEngineState(engineState)
+
+    Task {
+      await executeEffects(effects)
+    }
   }
 }
 
@@ -142,7 +111,6 @@ extension JRPGBattleStore {
     } else {
       print("🎬 Effect executed: \(effect.id) (priority: \(effect.priority))")
     }
-
   }
 }
 
@@ -190,19 +158,19 @@ extension JRPGBattleStore {
   ///
   /// - Parameter combatantID: The acting combatant, or `nil` to clear it.
   public func setCurrentActor(_ combatantID: CombatantID?) {
-    dispatch(.updateCurrentActor(combatantID))
+    applyBattleAction(.updateCurrentActor(combatantID))
   }
 
   /// Advances the battle to the next turn.
   public func advanceTurn() {
-    dispatch(.incrementTurn)
+    applyBattleAction(.incrementTurn)
   }
 
   /// Moves the battle to a specific phase.
   ///
   /// - Parameter phase: The phase to enter.
   public func advanceToPhase(_ phase: BattlePhase) {
-    dispatch(.transitionPhase(phase))
+    applyBattleAction(.transitionPhase(phase))
   }
 }
 

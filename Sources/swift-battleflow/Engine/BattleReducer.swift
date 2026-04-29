@@ -6,15 +6,6 @@ public struct BattleReducer: Sendable {
 
   public init() {}
 
-  /// Reduces engine-level actions while preserving JRPG rule state.
-  public func reduce(
-    state: JRPGBattleState,
-    action: BattleAction
-  ) -> (JRPGBattleState, [any Effect]) {
-    let (engineState, effects) = reduce(state: state.engineState, action: action)
-    return (state.withEngineState(engineState), effects)
-  }
-
   /// Reduces engine-level actions.
   public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
     switch action {

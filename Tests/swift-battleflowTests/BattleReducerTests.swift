@@ -8,8 +8,8 @@ import Testing
 func testReducerStartBattle() async throws {
   let initialState = JRPGBattleState()
 
-  let hero = BattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let enemy = BattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
+  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
 
   let action = JRPGAction.startBattle(players: [hero], enemies: [enemy])
   let (newState, effects) = JRPGReducer().reduce(state: initialState, action: action)
@@ -40,8 +40,8 @@ func testReducerAdvanceTurnAndPhase() async throws {
 
 @Test("Reducer handles attack action")
 func testReducerAttack() async throws {
-  let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = BattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
+  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
   let state = JRPGBattleState(
     combatants: [hero.id: hero, enemy.id: enemy],
@@ -60,7 +60,7 @@ func testReducerAttack() async throws {
 
 @Test("Reducer handles HP change action")
 func testReducerChangeHP() async throws {
-  let hero = BattleFlow.createCharacter(name: "Hero", hp: 50, maxHP: 100, isPlayer: true)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 50, maxHP: 100, isPlayer: true)
   let state = JRPGBattleState(
     combatants: [hero.id: hero],
     playerCombatants: [hero.id]
@@ -81,19 +81,13 @@ func testReducerChangeHP() async throws {
 
 @Test("Reducer clamps MP changes and handles escape")
 func testReducerMPChangeAndEscape() async throws {
-  let reducer = BattleReducer()
-
-  let hero = BattleFlow.createCharacter(name: "Mage", mp: 30, maxMP: 40, isPlayer: true)
+  let hero = JRPGBattleFlow.createCharacter(name: "Mage", mp: 30, maxMP: 40, isPlayer: true)
   let state = JRPGBattleState(
     phase: .actionExecution,
     combatants: [hero.id: hero],
     playerCombatants: [hero.id],
     enemyCombatants: []
   )
-
-  let (mpIncreasedState, _) = reducer.reduce(
-    state: state, action: BattleAction.transitionPhase(.actionExecution))
-  #expect(mpIncreasedState.phase == .actionExecution)
 
   let (mpChangedState, _) = JRPGReducer().reduce(
     state: state, action: .changeMP(target: hero.id, amount: 20))
@@ -126,8 +120,8 @@ func testReducerBattleActionDirectly() async throws {
 func testJRPGReducerActionDirectly() async throws {
   let reducer = JRPGReducer()
 
-  let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = BattleFlow.createCharacter(name: "Slime", hp: 40, isPlayer: false)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
+  let enemy = JRPGBattleFlow.createCharacter(name: "Slime", hp: 40, isPlayer: false)
   let state = JRPGBattleState(
     combatants: [hero.id: hero, enemy.id: enemy],
     playerCombatants: [hero.id],

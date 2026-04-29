@@ -33,8 +33,8 @@ func testBattleStoreEngineDispatch() async throws {
 func testJRPGBattleStoreStartBattle() async throws {
   let store = JRPGBattleStore()
 
-  let hero = BattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let enemy = BattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
+  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [enemy])
 
@@ -56,8 +56,8 @@ func testJRPGBattleStoreStartBattle() async throws {
 func testJRPGBattleStoreAttack() async throws {
   let store = JRPGBattleStore()
 
-  let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = BattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
+  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [enemy])
   store.performAttack(attacker: hero.id, target: enemy.id, damage: 30)

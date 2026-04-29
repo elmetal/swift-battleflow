@@ -1,40 +1,42 @@
-/// Swift BattleFlow - A JRPG-style turn-based combat system library.
+/// Swift BattleFlow - A pure Swift battle engine with optional JRPG rules.
 ///
 /// This module is written in pure Swift and embraces a state-store pattern that
-/// isolates side effects as `Effect` values. It delivers a modern, testable
-/// combat system that remains maintainable as your project scales.
+/// isolates side effects as `Effect` values.
 
-// MARK: - Core Exports
+// MARK: - Module Exports
 
 @_exported import Foundation
 @_exported import Observation
 
-// Core Components are directly available through their module
+// MARK: - Engine Factory
 
-// MARK: - Convenience Factory
-
-/// The primary entry point for the BattleFlow library.
+/// The primary entry point for the rule-agnostic BattleFlow engine.
 public struct BattleFlow {
+
+  /// Creates a rule-agnostic engine battle store.
+  ///
+  /// - Parameter initialState: The starting engine state.
+  /// - Returns: A fully initialized ``BattleStore`` ready to process battle actions.
+  @MainActor
+  public static func createStore(initialState: BattleState = BattleState()) -> BattleStore {
+    return BattleStore(initialState: initialState)
+  }
+}
+
+// MARK: - JRPG Factory
+
+/// The primary entry point for the default JRPG rule set.
+public struct JRPGBattleFlow {
 
   /// Creates a new JRPG battle store configured for the provided initial state.
   ///
-  /// - Parameter initialState: The starting state for the battle. The default
-  ///   value creates an empty battle.
-  /// - Returns: A fully initialized ``JRPGBattleStore`` ready to process actions.
+  /// - Parameter initialState: The starting JRPG state.
+  /// - Returns: A fully initialized ``JRPGBattleStore`` ready to process JRPG actions.
   @MainActor
   public static func createStore(
     initialState: JRPGBattleState = JRPGBattleState()
   ) -> JRPGBattleStore {
     return JRPGBattleStore(initialState: initialState)
-  }
-
-  /// Creates a rule-agnostic engine battle store.
-  ///
-  /// - Parameter initialState: The starting engine state.
-  /// - Returns: A fully initialized ``BattleStore`` ready to process engine actions.
-  @MainActor
-  public static func createEngineStore(initialState: BattleState = BattleState()) -> BattleStore {
-    return BattleStore(initialState: initialState)
   }
 
   /// Creates a convenience combatant for demonstrations or quick testing.
@@ -53,7 +55,7 @@ public struct BattleFlow {
   ///   - isPlayer: A Boolean value that indicates whether this combatant is
   ///     controlled by the player.
   /// - Returns: A configured ``Combatant`` instance that can be inserted into
-  ///   a battle state.
+  ///   a JRPG battle state.
   public static func createCharacter(
     name: String,
     hp: Int = 100,

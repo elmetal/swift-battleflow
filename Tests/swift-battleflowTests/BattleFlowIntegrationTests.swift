@@ -9,8 +9,8 @@ import Testing
 func testFullBattleFlow() async throws {
   let store = JRPGBattleStore()
 
-  let hero = BattleFlow.createCharacter(name: "Hero", hp: 100, attack: 25, isPlayer: true)
-  let goblin = BattleFlow.createCharacter(name: "Goblin", hp: 50, attack: 15, isPlayer: false)
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, attack: 25, isPlayer: true)
+  let goblin = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 50, attack: 15, isPlayer: false)
 
   // 戦闘開始
   store.startBattle(players: [hero], enemies: [goblin])
@@ -37,10 +37,10 @@ func testFullBattleFlow() async throws {
 @Test("BattleFlow factory methods")
 @MainActor
 func testBattleFlowFactory() async throws {
-  let store = BattleFlow.createStore()
+  let store = JRPGBattleFlow.createStore()
   #expect(store.currentPhase == .preparation)
 
-  let hero = BattleFlow.createCharacter(name: "Test Hero", hp: 150, mp: 75, attack: 30)
+  let hero = JRPGBattleFlow.createCharacter(name: "Test Hero", hp: 150, mp: 75, attack: 30)
   #expect(hero.name == "Test Hero")
   #expect(hero.id.value == "test_hero")
   #expect(hero.stats.hp == 150)
