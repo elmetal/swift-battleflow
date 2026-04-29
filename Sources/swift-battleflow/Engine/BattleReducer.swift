@@ -1,12 +1,20 @@
-/// The reducer at the heart of the state-store pattern.
+/// A reducer that applies engine actions to battle state.
 ///
-/// Combines an action and a state into a new state plus a collection of
-/// generated effects.
+/// Use a reducer to transform an immutable ``BattleState`` with a
+/// ``BattleAction``. The reducer returns the updated state and any effects that
+/// the caller should execute after the state transition completes.
 public struct BattleReducer: Sendable {
 
+  /// Creates a battle reducer.
   public init() {}
 
-  /// Reduces engine-level actions.
+  /// Returns the result of applying an action to a battle state.
+  ///
+  /// - Parameters:
+  ///   - state: The battle state to transform.
+  ///   - action: The engine action to apply.
+  /// - Returns: A tuple containing the transformed state and the generated
+  ///   effects.
   public func reduce(state: BattleState, action: BattleAction) -> (BattleState, [any Effect]) {
     switch action {
 
@@ -138,7 +146,7 @@ extension BattleReducer {
     effectID: String
   ) -> (BattleState, [any Effect]) {
 
-    // Effect execution is side-effect only and does not mutate state.
+    // Executing an effect does not change engine state.
     return (state, [])
   }
 
