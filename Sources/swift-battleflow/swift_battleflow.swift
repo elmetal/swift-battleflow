@@ -1,7 +1,7 @@
 /// Swift BattleFlow - A pure Swift battle engine with optional JRPG rules.
 ///
 /// This module is written in pure Swift and embraces a state-store pattern that
-/// isolates side effects as `Effect` values.
+/// separates state transitions, one-way commands, and asynchronous effects.
 
 // MARK: - Module Exports
 

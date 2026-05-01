@@ -1,11 +1,14 @@
 /// Applies the default JRPG battle rules on top of the battle engine.
-public struct JRPGReducer: Sendable {
+public struct JRPGReducer: Reducer {
+  public typealias State = JRPGBattleState
+  public typealias Action = JRPGAction
 
   public init() {}
 
   /// Reduces actions that belong to the default JRPG rule set.
-  public func reduce(state: JRPGBattleState, action: JRPGAction) -> (JRPGBattleState, [any Effect])
-  {
+  public func reduce(state: JRPGBattleState, action: JRPGAction) -> Reduction<
+    JRPGBattleState, JRPGAction
+  > {
     switch action {
     case .startBattle(let players, let enemies):
       return reduceStartBattle(state: state, players: players, enemies: enemies)
@@ -58,7 +61,7 @@ extension JRPGReducer {
     state: JRPGBattleState,
     players: [Combatant],
     enemies: [Combatant]
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     var combatants: [CombatantID: Combatant] = [:]
     var playerIDs: Set<CombatantID> = []
@@ -81,21 +84,21 @@ extension JRPGReducer {
       enemyCombatants: enemyIDs,
       turnCount: 1,
       currentActor: nil,
-      pendingEffects: []
+      pendingCommands: []
     )
 
-    let effects: [any Effect] = [
-      BaseEffect(id: "battle_start_animation", priority: 1),
-      BaseEffect(id: "battle_music_start", priority: 1),
+    let commands: [any Command] = [
+      BaseCommand(id: "battle_start_animation", priority: 1),
+      BaseCommand(id: "battle_music_start", priority: 1),
     ]
 
-    return (newState, effects)
+    return Reduction(state: newState, commands: commands)
   }
 
   fileprivate func reduceEndBattle(
     state: JRPGBattleState,
     result: BattleResult
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     let finalPhase: BattlePhase
     switch result {
@@ -109,12 +112,12 @@ extension JRPGReducer {
 
     let newState = state.withPhase(finalPhase)
 
-    let effects: [any Effect] = [
-      BaseEffect(id: "battle_end_\(result)", priority: 1),
-      BaseEffect(id: "battle_music_stop", priority: 0),
+    let commands: [any Command] = [
+      BaseCommand(id: "battle_end_\(result)", priority: 1),
+      BaseCommand(id: "battle_music_stop", priority: 0),
     ]
 
-    return (newState, effects)
+    return Reduction(state: newState, commands: commands)
   }
 
   // MARK: - Character Actions
@@ -124,10 +127,10 @@ extension JRPGReducer {
     attacker: CombatantID,
     target: CombatantID,
     damage: Int
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     guard let targetCombatant = state.combatants[target] else {
-      return (state, [])
+      return Reduction(state: state)
     }
 
     let newHP = targetCombatant.stats.hp - damage
@@ -136,13 +139,13 @@ extension JRPGReducer {
 
     let newState = state.withCombatant(updatedTarget)
 
-    let effects: [any Effect] = [
-      BaseEffect(id: "attack_animation_\(attacker.value)", priority: 3),
-      BaseEffect(id: "damage_effect_\(target.value)_\(damage)", priority: 2),
-      BaseEffect(id: "attack_sound", priority: 1),
+    let commands: [any Command] = [
+      BaseCommand(id: "attack_animation_\(attacker.value)", priority: 3),
+      BaseCommand(id: "damage_effect_\(target.value)_\(damage)", priority: 2),
+      BaseCommand(id: "attack_sound", priority: 1),
     ]
 
-    return (newState, effects)
+    return Reduction(state: newState, commands: commands)
   }
 
   fileprivate func reduceUseSkill(
@@ -150,15 +153,15 @@ extension JRPGReducer {
     user: CombatantID,
     skillID: String,
     targets: [CombatantID]
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Placeholder implementation; extend with concrete skill logic.
-    let effects: [any Effect] = [
-      BaseEffect(id: "skill_animation_\(skillID)", priority: 3),
-      BaseEffect(id: "skill_sound_\(skillID)", priority: 1),
+    let commands: [any Command] = [
+      BaseCommand(id: "skill_animation_\(skillID)", priority: 3),
+      BaseCommand(id: "skill_sound_\(skillID)", priority: 1),
     ]
 
-    return (state, effects)
+    return Reduction(state: state, commands: commands)
   }
 
   fileprivate func reduceUseItem(
@@ -166,44 +169,44 @@ extension JRPGReducer {
     user: CombatantID,
     itemID: String,
     target: CombatantID?
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Placeholder implementation; extend with concrete item logic.
-    let effects: [any Effect] = [
-      BaseEffect(id: "item_use_\(itemID)", priority: 2)
+    let commands: [any Command] = [
+      BaseCommand(id: "item_use_\(itemID)", priority: 2)
     ]
 
-    return (state, effects)
+    return Reduction(state: state, commands: commands)
   }
 
   fileprivate func reduceDefend(
     state: JRPGBattleState,
     defender: CombatantID
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
-    let effects: [any Effect] = [
-      BaseEffect(id: "defend_animation_\(defender.value)", priority: 1)
+    let commands: [any Command] = [
+      BaseCommand(id: "defend_animation_\(defender.value)", priority: 1)
     ]
 
-    return (state, effects)
+    return Reduction(state: state, commands: commands)
   }
 
   fileprivate func reduceEscape(
     state: JRPGBattleState,
     escaper: CombatantID
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Player escape ends the encounter immediately.
     if state.playerCombatants.contains(escaper) {
       let newState = state.withPhase(.escape)
-      let effects: [any Effect] = [
-        BaseEffect(id: "escape_success", priority: 2)
+      let commands: [any Command] = [
+        BaseCommand(id: "escape_success", priority: 2)
       ]
-      return (newState, effects)
+      return Reduction(state: newState, commands: commands)
     }
 
     // Enemy escape is a future enhancement.
-    return (state, [])
+    return Reduction(state: state)
   }
 
   // MARK: - Status Adjustments
@@ -212,10 +215,10 @@ extension JRPGReducer {
     state: JRPGBattleState,
     target: CombatantID,
     amount: Int
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     guard let combatant = state.combatants[target] else {
-      return (state, [])
+      return Reduction(state: state)
     }
 
     let newHP = combatant.stats.hp + amount
@@ -225,21 +228,21 @@ extension JRPGReducer {
     let newState = state.withCombatant(updatedCombatant)
 
     let effectType = amount > 0 ? "heal" : "damage"
-    let effects: [any Effect] = [
-      BaseEffect(id: "\(effectType)_effect_\(target.value)_\(abs(amount))", priority: 2)
+    let commands: [any Command] = [
+      BaseCommand(id: "\(effectType)_effect_\(target.value)_\(abs(amount))", priority: 2)
     ]
 
-    return (newState, effects)
+    return Reduction(state: newState, commands: commands)
   }
 
   fileprivate func reduceChangeMP(
     state: JRPGBattleState,
     target: CombatantID,
     amount: Int
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     guard let combatant = state.combatants[target] else {
-      return (state, [])
+      return Reduction(state: state)
     }
 
     let newMP = combatant.stats.mp + amount
@@ -248,11 +251,11 @@ extension JRPGReducer {
 
     let newState = state.withCombatant(updatedCombatant)
 
-    let effects: [any Effect] = [
-      BaseEffect(id: "mp_change_\(target.value)_\(amount)", priority: 1)
+    let commands: [any Command] = [
+      BaseCommand(id: "mp_change_\(target.value)_\(amount)", priority: 1)
     ]
 
-    return (newState, effects)
+    return Reduction(state: newState, commands: commands)
   }
 
   fileprivate func reduceApplyStatusEffect(
@@ -260,28 +263,28 @@ extension JRPGReducer {
     target: CombatantID,
     effect: String,
     duration: Int
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Status ailments will be implemented in a future phase.
-    let effects: [any Effect] = [
-      BaseEffect(id: "status_effect_apply_\(effect)", priority: 2)
+    let commands: [any Command] = [
+      BaseCommand(id: "status_effect_apply_\(effect)", priority: 2)
     ]
 
-    return (state, effects)
+    return Reduction(state: state, commands: commands)
   }
 
   fileprivate func reduceRemoveStatusEffect(
     state: JRPGBattleState,
     target: CombatantID,
     effect: String
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Status ailments will be implemented in a future phase.
-    let effects: [any Effect] = [
-      BaseEffect(id: "status_effect_remove_\(effect)", priority: 1)
+    let commands: [any Command] = [
+      BaseCommand(id: "status_effect_remove_\(effect)", priority: 1)
     ]
 
-    return (state, effects)
+    return Reduction(state: state, commands: commands)
   }
 
   // MARK: - AI Coordination
@@ -289,23 +292,23 @@ extension JRPGReducer {
   fileprivate func reduceAIDecideAction(
     state: JRPGBattleState,
     combatantID: CombatantID
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // AI decision-making will arrive in a future phase.
-    let effects: [any Effect] = [
-      BaseEffect(id: "ai_thinking_\(combatantID.value)", priority: 1)
+    let commands: [any Command] = [
+      BaseCommand(id: "ai_thinking_\(combatantID.value)", priority: 1)
     ]
 
-    return (state, effects)
+    return Reduction(state: state, commands: commands)
   }
 
   fileprivate func reduceAIExecuteAction(
     state: JRPGBattleState,
     combatantID: CombatantID,
     action: SelectedAction
-  ) -> (JRPGBattleState, [any Effect]) {
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // AI execution will arrive in a future phase.
-    return (state, [])
+    return Reduction(state: state)
   }
 }

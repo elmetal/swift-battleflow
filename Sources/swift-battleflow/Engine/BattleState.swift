@@ -56,8 +56,8 @@ public struct BattleState: Sendable, Equatable {
   /// The combatant that is currently acting, if any.
   public let currentActor: CombatantID?
 
-  /// Pending effects awaiting execution.
-  public let pendingEffects: [any Effect]
+  /// Pending commands awaiting execution.
+  public let pendingCommands: [any Command]
 
   public init(
     phase: BattlePhase = .preparation,
@@ -65,14 +65,14 @@ public struct BattleState: Sendable, Equatable {
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
-    pendingEffects: [any Effect] = []
+    pendingCommands: [any Command] = []
   ) {
     self.phase = phase
     self.participants = participants
     self.groups = groups
     self.turnCount = turnCount
     self.currentActor = currentActor
-    self.pendingEffects = pendingEffects
+    self.pendingCommands = pendingCommands
   }
 
   /// Indicates whether the battle has reached a terminal phase.
@@ -104,7 +104,7 @@ public struct BattleState: Sendable, Equatable {
       groups: newGroups,
       turnCount: turnCount,
       currentActor: currentActor,
-      pendingEffects: pendingEffects
+      pendingCommands: pendingCommands
     )
   }
 
@@ -121,31 +121,31 @@ public struct BattleState: Sendable, Equatable {
       groups: groups,
       turnCount: turnCount,
       currentActor: currentActor,
-      pendingEffects: pendingEffects
+      pendingCommands: pendingCommands
     )
   }
 
-  /// Returns a new state with additional pending effects appended.
-  public func withEffects(_ effects: [any Effect]) -> BattleState {
+  /// Returns a new state with additional pending commands appended.
+  public func withCommands(_ commands: [any Command]) -> BattleState {
     BattleState(
       phase: phase,
       participants: participants,
       groups: groups,
       turnCount: turnCount,
       currentActor: currentActor,
-      pendingEffects: pendingEffects + effects
+      pendingCommands: pendingCommands + commands
     )
   }
 
-  /// Returns a new state with all pending effects removed.
-  public func withClearedEffects() -> BattleState {
+  /// Returns a new state with all pending commands removed.
+  public func withClearedCommands() -> BattleState {
     BattleState(
       phase: phase,
       participants: participants,
       groups: groups,
       turnCount: turnCount,
       currentActor: currentActor,
-      pendingEffects: []
+      pendingCommands: []
     )
   }
 }
@@ -153,13 +153,13 @@ public struct BattleState: Sendable, Equatable {
 extension BattleState {
   /// Custom ``Equatable`` implementation.
   ///
-  /// Pending effects are type-erased, so only their counts are compared at
+  /// Pending commands are type-erased, so only their counts are compared at
   /// this stage. Extend this logic if more granular comparisons are needed in
   /// the future.
   public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
     lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
       && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
-      && lhs.pendingEffects.count == rhs.pendingEffects.count
-    // Note: Extend this comparison with detailed effect matching when needed.
+      && lhs.pendingCommands.count == rhs.pendingCommands.count
+    // Note: Extend this comparison with detailed command matching when needed.
   }
 }

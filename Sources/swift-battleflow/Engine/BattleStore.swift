@@ -1,53 +1,55 @@
 import Foundation
 import Observation
 
-/// The central hub of the engine state-store pattern.
+/// The central hub of a state-store feature.
 ///
-/// ``BattleStore`` owns rule-agnostic battle state, processes engine actions,
-/// and coordinates effect execution.
+/// A store owns state, applies actions through a reducer, executes commands, and
+/// starts asynchronous effects that can send follow-up actions.
 @Observable
 @MainActor
-public final class BattleStore {
+public final class Store<R: Reducer> {
 
-  /// The current battle state.
-  public private(set) var state: BattleState
+  /// The current state.
+  public private(set) var state: R.State
 
-  /// An optional handler used to execute side effects.
-  public var effectHandler: ((any Effect) async -> Void)?
+  /// An optional handler used to execute commands.
+  public var commandHandler: ((any Command) async -> Void)?
 
   /// The reducer that encapsulates state transition logic.
-  private let reducer: BattleReducer
+  private let reducer: R
 
   /// A debug-friendly log of dispatched actions.
-  private var actionHistory: [BattleAction] = []
+  private var actionHistory: [R.Action] = []
 
-  /// Creates a store using the provided initial engine state.
+  /// Creates a store using the provided initial state and reducer.
   ///
-  /// - Parameter initialState: The starting state. The default value produces
-  ///   an empty battle.
-  public init(initialState: BattleState = BattleState()) {
+  /// - Parameters:
+  ///   - initialState: The starting state.
+  ///   - reducer: The reducer that handles actions.
+  public init(initialState: R.State, reducer: R) {
     self.state = initialState
-    self.reducer = BattleReducer()
+    self.reducer = reducer
   }
 
-  /// Dispatches a single engine action synchronously.
+  /// Dispatches a single action synchronously.
   ///
-  /// - Parameter action: The engine action to process.
-  public func dispatch(_ action: BattleAction) {
+  /// - Parameter action: The action to process.
+  public func dispatch(_ action: R.Action) {
     actionHistory.append(action)
 
-    let (newState, effects) = reducer.reduce(state: state, action: action)
-    state = newState
+    let reduction = reducer.reduce(state: state, action: action)
+    state = reduction.state
 
     Task {
-      await executeEffects(effects)
+      await executeCommands(reduction.commands)
+      await executeEffects(reduction.effects)
     }
   }
 
   /// Dispatches a sequence of actions in order.
   ///
   /// - Parameter actions: The ordered actions to process.
-  public func dispatch(_ actions: [BattleAction]) {
+  public func dispatch(_ actions: [R.Action]) {
     for action in actions {
       dispatch(action)
     }
@@ -56,21 +58,20 @@ public final class BattleStore {
   /// Dispatches an action from asynchronous contexts.
   ///
   /// - Parameter action: The action to process.
-  public func dispatchAsync(_ action: BattleAction) async {
+  public func dispatchAsync(_ action: R.Action) async {
     dispatch(action)
   }
 
   /// Resets the state to the supplied value or a fresh battle.
   ///
-  /// - Parameter newState: The replacement state. When omitted, a new
-  ///   ``BattleState`` instance is used.
-  public func resetState(_ newState: BattleState? = nil) {
-    state = newState ?? BattleState()
+  /// - Parameter newState: The replacement state.
+  public func resetState(_ newState: R.State) {
+    state = newState
     actionHistory.removeAll()
   }
 
   /// Returns a snapshot of the action history.
-  public func getActionHistory() -> [BattleAction] {
+  public func getActionHistory() -> [R.Action] {
     return actionHistory
   }
 
@@ -79,39 +80,71 @@ public final class BattleStore {
     actionHistory.removeAll()
   }
 
-  /// Returns the current battle state without mutating it.
-  public func getStateSnapshot() -> BattleState {
+  /// Returns the current state without mutating it.
+  public func getStateSnapshot() -> R.State {
     return state
   }
 }
 
-// MARK: - Effect Execution
+/// A store specialized for the rule-agnostic battle engine.
+public typealias BattleStore = Store<BattleReducer>
 
 extension BattleStore {
-
-  /// Executes the supplied effects in priority order.
+  /// Creates a store using the provided initial engine state.
   ///
-  /// - Parameter effects: The pending effects to run.
-  private func executeEffects(_ effects: [any Effect]) async {
-    let sortedEffects = effects.sorted { $0.priority > $1.priority }
+  /// - Parameter initialState: The starting state. The default value produces
+  ///   an empty battle.
+  public convenience init(initialState: BattleState = BattleState()) {
+    self.init(initialState: initialState, reducer: BattleReducer())
+  }
 
-    for effect in sortedEffects {
-      await executeEffect(effect)
+  /// Resets the state to the supplied value or a fresh battle.
+  ///
+  /// - Parameter newState: The replacement state. When omitted, a new
+  ///   ``BattleState`` instance is used.
+  public func resetState(_ newState: BattleState? = nil) {
+    resetState(newState ?? BattleState())
+  }
+}
+
+// MARK: - Work Execution
+
+extension Store {
+
+  /// Executes the supplied commands in priority order.
+  ///
+  /// - Parameter commands: The pending commands to run.
+  private func executeCommands(_ commands: [any Command]) async {
+    let sortedCommands = commands.sorted { $0.priority > $1.priority }
+
+    for command in sortedCommands {
+      await executeCommand(command)
     }
   }
 
-  /// Executes a single effect.
+  /// Executes a single command.
   ///
-  /// - Parameter effect: The effect to run.
-  private func executeEffect(_ effect: any Effect) async {
-    if let handler = effectHandler {
-      await handler(effect)
+  /// - Parameter command: The command to run.
+  private func executeCommand(_ command: any Command) async {
+    if let handler = commandHandler {
+      await handler(command)
     } else {
-      print("🎬 Effect executed: \(effect.id) (priority: \(effect.priority))")
+      print("🎬 Command executed: \(command.id) (priority: \(command.priority))")
     }
+  }
 
-    await MainActor.run {
-      dispatch(.markEffectExecuted(effect.id))
+  /// Starts effects that can produce follow-up actions.
+  ///
+  /// - Parameter effects: The effects to run.
+  private func executeEffects(_ effects: [Effect<R.Action>]) async {
+    for effect in effects {
+      Task {
+        if let action = await effect.run() {
+          await MainActor.run {
+            self.dispatch(action)
+          }
+        }
+      }
     }
   }
 }
@@ -189,7 +222,7 @@ extension BattleStore {
     print("Turn: \(state.turnCount)")
     print("Current Actor: \(state.currentActor?.value ?? "none")")
     print("Participants: \(state.participants.count)")
-    print("Pending Effects: \(state.pendingEffects.count)")
+    print("Pending Commands: \(state.pendingCommands.count)")
     print("==================")
   }
 

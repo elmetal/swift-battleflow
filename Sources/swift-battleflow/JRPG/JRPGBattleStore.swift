@@ -9,8 +9,8 @@ public final class JRPGBattleStore {
   /// The current JRPG battle state.
   public private(set) var state: JRPGBattleState
 
-  /// An optional handler used to execute side effects.
-  public var effectHandler: ((any Effect) async -> Void)?
+  /// An optional handler used to execute commands.
+  public var commandHandler: ((any Command) async -> Void)?
 
   /// A debug-friendly log of dispatched JRPG actions.
   private var actionHistory: [JRPGAction] = []
@@ -29,11 +29,12 @@ public final class JRPGBattleStore {
   public func dispatch(_ action: JRPGAction) {
     actionHistory.append(action)
 
-    let (newState, effects) = JRPGReducer().reduce(state: state, action: action)
-    state = newState
+    let reduction = JRPGReducer().reduce(state: state, action: action)
+    state = reduction.state
 
     Task {
-      await executeEffects(effects)
+      await executeCommands(reduction.commands)
+      await executeEffects(reduction.effects)
     }
   }
 
@@ -78,38 +79,69 @@ public final class JRPGBattleStore {
   }
 
   private func applyBattleAction(_ action: BattleAction) {
-    let (engineState, effects) = BattleReducer().reduce(state: state.engineState, action: action)
-    state = state.withEngineState(engineState)
+    let reduction = BattleReducer().reduce(state: state.engineState, action: action)
+    state = state.withEngineState(reduction.state)
 
     Task {
-      await executeEffects(effects)
+      await executeCommands(reduction.commands)
+      await executeEffects(reduction.effects)
     }
   }
 }
 
-// MARK: - Effect Execution
+// MARK: - Work Execution
 
 extension JRPGBattleStore {
 
-  /// Executes the supplied effects in priority order.
+  /// Executes the supplied commands in priority order.
   ///
-  /// - Parameter effects: The pending effects to run.
-  private func executeEffects(_ effects: [any Effect]) async {
-    let sortedEffects = effects.sorted { $0.priority > $1.priority }
+  /// - Parameter commands: The pending commands to run.
+  private func executeCommands(_ commands: [any Command]) async {
+    let sortedCommands = commands.sorted { $0.priority > $1.priority }
 
-    for effect in sortedEffects {
-      await executeEffect(effect)
+    for command in sortedCommands {
+      await executeCommand(command)
     }
   }
 
-  /// Executes a single effect.
+  /// Executes a single command.
   ///
-  /// - Parameter effect: The effect to run.
-  private func executeEffect(_ effect: any Effect) async {
-    if let handler = effectHandler {
-      await handler(effect)
+  /// - Parameter command: The command to run.
+  private func executeCommand(_ command: any Command) async {
+    if let handler = commandHandler {
+      await handler(command)
     } else {
-      print("🎬 Effect executed: \(effect.id) (priority: \(effect.priority))")
+      print("🎬 Command executed: \(command.id) (priority: \(command.priority))")
+    }
+  }
+
+  /// Starts effects that can produce follow-up JRPG actions.
+  ///
+  /// - Parameter effects: The effects to run.
+  private func executeEffects(_ effects: [Effect<JRPGAction>]) async {
+    for effect in effects {
+      Task {
+        if let action = await effect.run() {
+          await MainActor.run {
+            self.dispatch(action)
+          }
+        }
+      }
+    }
+  }
+
+  /// Starts effects that can produce follow-up engine actions.
+  ///
+  /// - Parameter effects: The effects to run.
+  private func executeEffects(_ effects: [Effect<BattleAction>]) async {
+    for effect in effects {
+      Task {
+        if let action = await effect.run() {
+          await MainActor.run {
+            self.applyBattleAction(action)
+          }
+        }
+      }
     }
   }
 }
@@ -245,7 +277,7 @@ extension JRPGBattleStore {
     print("Current Actor: \(state.currentActor?.value ?? "none")")
     print("Players: \(state.alivePlayers.count)/\(state.playerCombatants.count) alive")
     print("Enemies: \(state.aliveEnemies.count)/\(state.enemyCombatants.count) alive")
-    print("Pending Effects: \(state.pendingEffects.count)")
+    print("Pending Commands: \(state.pendingCommands.count)")
     print("=========================")
   }
 

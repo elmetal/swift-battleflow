@@ -1,7 +1,7 @@
 # Swift BattleFlow - 作業計画
 
 ## プロジェクト概要
-JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。State-Storeパターンを採用し、副作用（アニメーション、サウンド等）をEffectとして分離する。
+ルール非依存の戦闘エンジンと、標準JRPGルールセットを分離して実装するPure Swiftライブラリ。State-Storeパターンを採用し、Reducerの結果を状態、Command、Effect<Action>に分けて扱う。
 
 ## アーキテクチャ設計
 
@@ -9,8 +9,9 @@ JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。
 - **State**: 戦闘の現在状態を表すイミュータブルな構造体
 - **Action**: 状態変更を表すenumケース  
 - **Store**: 状態管理とアクション処理の中央ハブ
-- **Effect**: 副作用（アニメーション、サウンド、UI更新）を表現
-- **Reducer**: Action + State → (State, [Effect]) の純粋関数
+- **Command**: アニメーション、サウンド、ログ、UI更新など、Actionを返さない一方向の外部作業
+- **Effect<Action>**: AI、乱数、入力待ちなど、非同期にActionを返し得る作業
+- **Reducer**: Action + State → Reduction<State, Action> の純粋関数
 
 ## 実装フェーズ
 
@@ -18,8 +19,9 @@ JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。
 #### 1.1 基本型定義
 - [x] `BattleState` - 戦闘状態の定義
 - [x] `BattleAction` - アクション列挙型
-- [x] `Effect` - 副作用プロトコル
-- [x] `BattleStore` - 状態管理ストア
+- [x] `Command` - 一方向の外部作業プロトコル
+- [x] `Effect<Action>` - 非同期にActionを返し得る作業
+- [x] `Store<Reducer>` / `BattleStore` - 状態管理ストア
 
 #### 1.2 Reducer実装
 - [x] `BattleReducer` - メインReducer
@@ -45,17 +47,16 @@ JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。
 - [ ] AI行動選択
 - [x] ダメージ計算システム (基本実装)
 
-### フェーズ 4: エフェクトシステム (部分完了)
-#### 4.1 基本エフェクト
-- [x] `DamageEffect` - ダメージ表示エフェクト (BaseEffectとして実装)
-- [x] `HealEffect` - 回復エフェクト (BaseEffectとして実装)
-- [x] `SoundEffect` - サウンド再生エフェクト (BaseEffectとして実装)
-- [x] `AnimationEffect` - アニメーション指示 (BaseEffectとして実装)
+### フェーズ 4: Command / Effect システム (部分完了)
+#### 4.1 Command
+- [x] `Command` - アニメーション、サウンド、ログ、UI更新などの一方向作業
+- [x] `BaseCommand` - 汎用Command実装
+- [x] `commandHandler` - Command実行の抽象化
+- [x] Commandキューイング (優先度ソート実装済み)
 
-#### 4.2 エフェクト処理
-- [x] `EffectHandler` - エフェクト実行の抽象化 (BattleStoreで実装)
-- [x] エフェクトキューイング (優先度ソート実装済み)
-- [x] 非同期エフェクト処理 (Taskによる実装済み)
+#### 4.2 Effect<Action>
+- [x] `Effect<Action>` - 非同期にActionを返し得る作業
+- [x] StoreからEffectを実行し、返却Actionを再dispatch
 
 ### フェーズ 5: 高度な戦闘機能
 #### 5.1 状態異常システム
@@ -96,39 +97,21 @@ JRPGのターン制戦闘システムを実装するPure Swiftライブラリ。
 ```
 Sources/swift-battleflow/
 ├── Engine/
-│   ├── BattleStore.swift
-│   ├── BattleState.swift
 │   ├── BattleAction.swift
 │   ├── BattleReducer.swift
-│   └── Effect.swift
-├── Entities/
-│   ├── Combatant.swift
-│   ├── Character.swift
-│   ├── Enemy.swift
-│   └── Stats.swift
-├── Turn/
-│   ├── TurnOrder.swift
-│   ├── TurnPhase.swift
-│   └── Initiative.swift
-├── Combat/
-│   ├── DamageCalculator.swift
-│   ├── BattleFlow.swift
-│   └── AIBehavior.swift
-├── Effects/
-│   ├── EffectHandler.swift
-│   ├── DamageEffect.swift
-│   ├── HealEffect.swift
-│   ├── SoundEffect.swift
-│   └── AnimationEffect.swift
-├── StatusEffects/
-│   ├── StatusEffect.swift
-│   └── StatusEffectManager.swift
-├── Items/
-│   ├── Item.swift
-│   └── ItemEffect.swift
-└── Utilities/
-    ├── RandomNumberGenerator.swift
-    └── Extensions.swift
+│   ├── BattleState.swift
+│   ├── BattleStore.swift
+│   ├── Command.swift
+│   └── Reducer.swift
+├── JRPG/
+│   ├── JRPGAction.swift
+│   ├── JRPGActionTypes.swift
+│   ├── JRPGBattleState.swift
+│   ├── JRPGBattleStore.swift
+│   ├── JRPGCombatant.swift
+│   ├── JRPGReducer.swift
+│   └── JRPGStats.swift
+└── swift_battleflow.swift
 ```
 
 ## 実装進捗状況

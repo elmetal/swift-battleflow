@@ -8,7 +8,7 @@ public struct BattleSelection: Sendable, Equatable {
   }
 }
 
-/// Describes engine-level actions that coordinate battle flow and effects.
+/// Describes engine-level actions that coordinate battle flow and commands.
 public enum BattleAction: Sendable, Equatable {
   /// Advances to the next phase in the battle flow.
   case transitionPhase(BattlePhase)
@@ -25,12 +25,12 @@ public enum BattleAction: Sendable, Equatable {
   /// Completes an action selection with the specified decision.
   case completeSelection(for: CombatantID, selection: BattleSelection)
 
-  /// Queues one or more side-effect identifiers for later execution.
-  case enqueueEffects([String])  // Effect identifiers.
+  /// Queues one or more command identifiers for later execution.
+  case enqueueCommands([String])
 
-  /// Executes a previously enqueued effect.
-  case markEffectExecuted(String)  // Effect identifier.
+  /// Marks a previously enqueued command as executed.
+  case markCommandExecuted(String)
 
-  /// Clears all pending effects from the queue.
-  case removeAllEffects
+  /// Clears all pending commands from the queue.
+  case removeAllCommands
 }

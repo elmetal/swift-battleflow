@@ -30,7 +30,7 @@ public struct JRPGBattleState: Sendable, Equatable {
     enemyCombatants: Set<CombatantID> = [],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
-    pendingEffects: [any Effect] = []
+    pendingCommands: [any Command] = []
   ) {
     var participants: [CombatantID: BattleParticipant] = [:]
     for id in combatants.keys {
@@ -46,7 +46,7 @@ public struct JRPGBattleState: Sendable, Equatable {
       ],
       turnCount: turnCount,
       currentActor: currentActor,
-      pendingEffects: pendingEffects
+      pendingCommands: pendingCommands
     )
 
     self.init(
@@ -69,8 +69,8 @@ public struct JRPGBattleState: Sendable, Equatable {
     engineState.currentActor
   }
 
-  public var pendingEffects: [any Effect] {
-    engineState.pendingEffects
+  public var pendingCommands: [any Command] {
+    engineState.pendingCommands
   }
 
   public var isBattleEnded: Bool {
@@ -128,14 +128,14 @@ public struct JRPGBattleState: Sendable, Equatable {
     withEngineState(engineState.withPhase(newPhase))
   }
 
-  /// Returns a new state with additional pending effects appended.
-  public func withEffects(_ effects: [any Effect]) -> JRPGBattleState {
-    withEngineState(engineState.withEffects(effects))
+  /// Returns a new state with additional pending commands appended.
+  public func withCommands(_ commands: [any Command]) -> JRPGBattleState {
+    withEngineState(engineState.withCommands(commands))
   }
 
-  /// Returns a new state with all pending effects removed.
-  public func withClearedEffects() -> JRPGBattleState {
-    withEngineState(engineState.withClearedEffects())
+  /// Returns a new state with all pending commands removed.
+  public func withClearedCommands() -> JRPGBattleState {
+    withEngineState(engineState.withClearedCommands())
   }
 
   public static func == (lhs: JRPGBattleState, rhs: JRPGBattleState) -> Bool {
