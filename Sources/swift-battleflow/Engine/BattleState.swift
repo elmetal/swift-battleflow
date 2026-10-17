@@ -174,13 +174,11 @@ public struct BattleState: Sendable, Equatable {
 extension BattleState {
   /// Custom ``Equatable`` implementation.
   ///
-  /// Pending commands are type-erased, so only their counts are compared at
-  /// this stage. Extend this logic if more granular comparisons are needed in
-  /// the future.
+  /// Pending commands are type-erased, so they are compared element by element
+  /// with ``Command/isEqual(to:)``, which also requires matching concrete types.
   public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
     lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
       && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
-      && lhs.pendingCommands.count == rhs.pendingCommands.count
-    // Note: Extend this comparison with detailed command matching when needed.
+      && lhs.pendingCommands.elementsEqual(rhs.pendingCommands) { $0.isEqual(to: $1) }
   }
 }
