@@ -28,7 +28,9 @@ public enum BattleAction: Sendable, Equatable {
   /// Queues one or more command identifiers for later execution.
   case enqueueCommands([String])
 
-  /// Marks a previously enqueued command as executed.
+  /// Marks a previously enqueued command as executed and removes it from the
+  /// queue. When several pending commands share the ID, only the first is
+  /// removed; an ID that is not pending is ignored.
   case markCommandExecuted(String)
 
   /// Clears all pending commands from the queue.

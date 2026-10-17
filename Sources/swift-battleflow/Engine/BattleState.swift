@@ -137,6 +137,27 @@ public struct BattleState: Sendable, Equatable {
     )
   }
 
+  /// Returns a new state without the first pending command that has the given ID.
+  ///
+  /// The state is returned unchanged when no pending command has the ID.
+  public func removingFirstCommand(withID id: String) -> BattleState {
+    guard let index = pendingCommands.firstIndex(where: { $0.id == id }) else {
+      return self
+    }
+
+    var newCommands = pendingCommands
+    newCommands.remove(at: index)
+
+    return BattleState(
+      phase: phase,
+      participants: participants,
+      groups: groups,
+      turnCount: turnCount,
+      currentActor: currentActor,
+      pendingCommands: newCommands
+    )
+  }
+
   /// Returns a new state with all pending commands removed.
   public func removingAllCommands() -> BattleState {
     BattleState(
