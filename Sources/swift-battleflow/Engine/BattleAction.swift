@@ -19,14 +19,18 @@ public enum BattleAction: Sendable, Equatable {
   /// Sets the combatant that is currently acting.
   case updateCurrentActor(CombatantID?)
 
-  /// Signals the beginning of an action selection phase for a combatant.
+  /// Starts a new selection for a participant, discarding any previous one.
+  ///
+  /// Ignored when the battle has ended or the participant is unknown.
   case beginSelection(for: CombatantID)
 
-  /// Completes an action selection with the specified decision.
+  /// Records the participant's selection for the current turn.
+  ///
+  /// Ignored when the battle has ended or the participant is unknown.
   case completeSelection(BattleSelection, for: CombatantID)
 
-  /// Queues one or more command identifiers for later execution.
-  case enqueueCommands([String])
+  /// Queues commands for later execution.
+  case enqueueCommands([any Command])
 
   /// Marks a previously enqueued command as executed and removes it from the
   /// queue. When several pending commands share the ID, only the first is
@@ -35,4 +39,34 @@ public enum BattleAction: Sendable, Equatable {
 
   /// Clears all pending commands from the queue.
   case removeAllCommands
+}
+
+extension BattleAction {
+  /// Custom ``Equatable`` implementation.
+  ///
+  /// Enqueued commands are type-erased, so they are compared element by
+  /// element with ``Command/isEqual(to:)``.
+  public static func == (lhs: BattleAction, rhs: BattleAction) -> Bool {
+    switch (lhs, rhs) {
+    case (.transitionPhase(let lhs), .transitionPhase(let rhs)):
+      return lhs == rhs
+    case (.incrementTurn, .incrementTurn), (.removeAllCommands, .removeAllCommands):
+      return true
+    case (.updateCurrentActor(let lhs), .updateCurrentActor(let rhs)):
+      return lhs == rhs
+    case (.beginSelection(let lhs), .beginSelection(let rhs)):
+      return lhs == rhs
+    case (
+      .completeSelection(let lhsSelection, let lhsID),
+      .completeSelection(let rhsSelection, let rhsID)
+    ):
+      return lhsSelection == rhsSelection && lhsID == rhsID
+    case (.enqueueCommands(let lhs), .enqueueCommands(let rhs)):
+      return lhs.elementsEqual(rhs) { $0.isEqual(to: $1) }
+    case (.markCommandExecuted(let lhs), .markCommandExecuted(let rhs)):
+      return lhs == rhs
+    default:
+      return false
+    }
+  }
 }

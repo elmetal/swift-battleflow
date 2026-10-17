@@ -32,15 +32,21 @@ public struct BattleReducer: Reducer {
       return reduceUpdateCurrentActor(state: state, actorID: actorID)
 
     case .beginSelection(let combatantID):
+      guard canSelect(combatantID, in: state) else {
+        return Reduction(state: state)
+      }
       return reduceBeginSelection(state: state, combatantID: combatantID)
 
     case .completeSelection(let selection, let combatantID):
+      guard canSelect(combatantID, in: state) else {
+        return Reduction(state: state)
+      }
       return reduceCompleteSelection(
         state: state, combatantID: combatantID, selection: selection)
 
     // MARK: - Command Management
-    case .enqueueCommands(let commandIDs):
-      return reduceEnqueueCommands(state: state, commandIDs: commandIDs)
+    case .enqueueCommands(let commands):
+      return reduceEnqueueCommands(state: state, commands: commands)
 
     case .markCommandExecuted(let commandID):
       return reduceMarkCommandExecuted(state: state, commandID: commandID)
@@ -55,6 +61,13 @@ public struct BattleReducer: Reducer {
 // MARK: - Private Reducer Methods
 
 extension BattleReducer {
+
+  // MARK: - Preconditions
+
+  /// Indicates whether the participant may make a selection in the given state.
+  private func canSelect(_ id: CombatantID, in state: BattleState) -> Bool {
+    !state.isBattleEnded && state.participants[id] != nil
+  }
 
   // MARK: - Battle Flow Control
 
@@ -72,14 +85,7 @@ extension BattleReducer {
   }
 
   private func reduceIncrementTurn(state: BattleState) -> Reduction<BattleState, BattleAction> {
-    let newState = BattleState(
-      phase: state.phase,
-      participants: state.participants,
-      groups: state.groups,
-      turnCount: state.turnCount + 1,
-      currentActor: nil,
-      pendingCommands: state.pendingCommands
-    )
+    let newState = state.advancingTurn()
 
     let commands: [any Command] = [
       BaseCommand(id: "turn_advance", priority: 1)
@@ -95,14 +101,7 @@ extension BattleReducer {
     actorID: CombatantID?
   ) -> Reduction<BattleState, BattleAction> {
 
-    let newState = BattleState(
-      phase: state.phase,
-      participants: state.participants,
-      groups: state.groups,
-      turnCount: state.turnCount,
-      currentActor: actorID,
-      pendingCommands: state.pendingCommands
-    )
+    let newState = state.withCurrentActor(actorID)
 
     return Reduction(state: newState)
   }
@@ -116,7 +115,7 @@ extension BattleReducer {
       BaseCommand(id: "action_selection_begin_\(combatantID.value)", priority: 1)
     ]
 
-    return Reduction(state: state, commands: commands)
+    return Reduction(state: state.removingSelection(for: combatantID), commands: commands)
   }
 
   private func reduceCompleteSelection(
@@ -129,17 +128,17 @@ extension BattleReducer {
       BaseCommand(id: "action_selection_complete_\(combatantID.value)", priority: 1)
     ]
 
-    return Reduction(state: state, commands: commands)
+    return Reduction(
+      state: state.withSelection(selection, for: combatantID), commands: commands)
   }
 
   // MARK: - Command Management
 
   private func reduceEnqueueCommands(
     state: BattleState,
-    commandIDs: [String]
+    commands: [any Command]
   ) -> Reduction<BattleState, BattleAction> {
 
-    let commands = commandIDs.map { BaseCommand(id: $0, priority: 1) }
     let newState = state.appendingCommands(commands)
     return Reduction(state: newState)
   }
