@@ -67,6 +67,9 @@ public struct BattleState: Sendable, Equatable {
   /// The combatant that is currently acting, if any.
   public private(set) var currentActor: CombatantID?
 
+  /// The participants that still have to act this turn, in order.
+  public private(set) var actionOrder: [CombatantID]
+
   /// Pending commands awaiting execution.
   public private(set) var pendingCommands: [any Command]
 
@@ -76,6 +79,7 @@ public struct BattleState: Sendable, Equatable {
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
+    actionOrder: [CombatantID] = [],
     pendingCommands: [any Command] = []
   ) {
     self.phase = phase
@@ -83,6 +87,7 @@ public struct BattleState: Sendable, Equatable {
     self.groups = groups
     self.turnCount = turnCount
     self.currentActor = currentActor
+    self.actionOrder = actionOrder
     self.pendingCommands = pendingCommands
   }
 
@@ -136,11 +141,31 @@ extension BattleState {
 
   /// Returns a new state that starts the next turn.
   ///
-  /// The turn counter increments, and the current actor is cleared.
+  /// The turn counter increments, and the current actor and the remaining
+  /// action order are cleared.
   public func advancingTurn() -> BattleState {
     updating { state in
       state.turnCount += 1
       state.currentActor = nil
+      state.actionOrder = []
+    }
+  }
+
+  /// Returns a new state with the given action order.
+  ///
+  /// - Precondition: Every ID is a known participant and appears only once.
+  public func withActionOrder(_ order: [CombatantID]) -> BattleState {
+    precondition(
+      order.allSatisfy { participants[$0] != nil }, "Action order must contain only participants.")
+    precondition(Set(order).count == order.count, "Action order must not contain duplicates.")
+    return updating { $0.actionOrder = order }
+  }
+
+  /// Returns a new state whose current actor is the next participant in the
+  /// action order, or `nil` when no participant is left.
+  public func advancingActor() -> BattleState {
+    updating { state in
+      state.currentActor = state.actionOrder.isEmpty ? nil : state.actionOrder.removeFirst()
     }
   }
 
@@ -178,6 +203,7 @@ extension BattleState {
   public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
     lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
       && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
+      && lhs.actionOrder == rhs.actionOrder
       && lhs.pendingCommands.elementsEqual(rhs.pendingCommands) { $0.isEqual(to: $1) }
   }
 }
