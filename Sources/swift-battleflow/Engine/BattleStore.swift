@@ -21,6 +21,12 @@ public final class Store<R: Reducer> {
   /// A debug-friendly log of dispatched actions.
   public private(set) var actionHistory: [R.Action] = []
 
+  /// The most recently enqueued unit of work.
+  ///
+  /// Each dispatch chains its work after this task, so commands run in
+  /// dispatch order even when the command handler suspends.
+  @ObservationIgnored private var lastWork: Task<Void, Never>?
+
   /// Creates a store using the provided initial state and reducer.
   ///
   /// - Parameters:
@@ -33,6 +39,11 @@ public final class Store<R: Reducer> {
 
   /// Dispatches a single action synchronously.
   ///
+  /// The state updates immediately. The reduction's commands run after the
+  /// commands of every earlier dispatch, and its effects start once those
+  /// commands finish. Effects run concurrently, so their follow-up actions are
+  /// dispatched in completion order.
+  ///
   /// - Parameter action: The action to process.
   public func dispatch(_ action: R.Action) {
     actionHistory.append(action)
@@ -40,9 +51,24 @@ public final class Store<R: Reducer> {
     let reduction = reducer.reduce(state: state, action: action)
     state = reduction.state
 
-    Task {
+    let previousWork = lastWork
+    lastWork = Task {
+      await previousWork?.value
       await executeCommands(reduction.commands)
-      await executeEffects(reduction.effects)
+      startEffects(reduction.effects)
+    }
+  }
+
+  /// Waits until the commands of every dispatched action have run, including
+  /// actions dispatched while waiting.
+  ///
+  /// Effects are started but not awaited.
+  public func waitForPendingCommands() async {
+    while let work = lastWork {
+      await work.value
+      if lastWork == work {
+        lastWork = nil
+      }
     }
   }
 
@@ -116,13 +142,11 @@ extension Store {
   /// Starts effects that can produce follow-up actions.
   ///
   /// - Parameter effects: The effects to run.
-  private func executeEffects(_ effects: [Effect<R.Action>]) async {
+  private func startEffects(_ effects: [Effect<R.Action>]) {
     for effect in effects {
       Task {
         if let action = await effect.run() {
-          await MainActor.run {
-            self.dispatch(action)
-          }
+          dispatch(action)
         }
       }
     }
