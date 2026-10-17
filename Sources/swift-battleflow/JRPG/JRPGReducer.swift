@@ -107,19 +107,13 @@ extension JRPGReducer {
     enemies: [Combatant]
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
-    var combatants: [CombatantID: Combatant] = [:]
-    var playerIDs: Set<CombatantID> = []
-    var enemyIDs: Set<CombatantID> = []
-
-    for player in players {
-      combatants[player.id] = player
-      playerIDs.insert(player.id)
-    }
-
-    for enemy in enemies {
-      combatants[enemy.id] = enemy
-      enemyIDs.insert(enemy.id)
-    }
+    let combatants = Dictionary(
+      (players + enemies).map { ($0.id, $0) },
+      uniquingKeysWith: { _, _ in
+        preconditionFailure("startBattle requires unique combatant IDs across both rosters.")
+      })
+    let playerIDs = Set(players.map(\.id))
+    let enemyIDs = Set(enemies.map(\.id))
 
     let newState = JRPGBattleState(
       phase: .turnSelection,
