@@ -129,3 +129,14 @@ func testTypedSkillAndItemIDs() async throws {
   #expect(
     SelectedAction.item(id: ItemID("potion"), target: nil).battleSelection.id == "jrpg.item.potion")
 }
+
+@Test("JRPGReducer handles AI decision requests")
+func testRequestAIDecision() async throws {
+  let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
+  let state = JRPGBattleState(
+    phase: .turnSelection, combatants: [goblin.id: goblin], enemyIDs: [goblin.id])
+
+  let reduction = JRPGReducer().reduce(state: state, action: .requestAIDecision(for: goblin.id))
+
+  #expect(reduction.commands.contains { ($0 as? BaseCommand)?.id == "ai_thinking_goblin" })
+}
