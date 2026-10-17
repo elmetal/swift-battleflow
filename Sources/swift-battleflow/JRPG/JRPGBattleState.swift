@@ -5,22 +5,26 @@ extension BattleGroupID {
 }
 
 /// Stores JRPG-specific battle state on top of the rule-agnostic engine state.
+///
+/// The engine state is the single source of truth for participants and
+/// groups; ``playerIDs`` and ``enemyIDs`` are derived from its groups.
 public struct JRPGBattleState: Sendable, Equatable {
   public let engineState: BattleState
   public let combatants: [CombatantID: Combatant]
-  public let playerIDs: Set<CombatantID>
-  public let enemyIDs: Set<CombatantID>
 
+  /// Creates a state from an engine state and its combatants.
+  ///
+  /// - Precondition: The combatant IDs match the engine participant IDs.
   public init(
     engineState: BattleState = BattleState(),
-    combatants: [CombatantID: Combatant] = [:],
-    playerIDs: Set<CombatantID> = [],
-    enemyIDs: Set<CombatantID> = []
+    combatants: [CombatantID: Combatant] = [:]
   ) {
+    precondition(
+      Set(combatants.keys) == Set(engineState.participants.keys),
+      "Every combatant must be an engine participant, and vice versa.")
+
     self.engineState = engineState
     self.combatants = combatants
-    self.playerIDs = playerIDs
-    self.enemyIDs = enemyIDs
   }
 
   public init(
@@ -49,12 +53,17 @@ public struct JRPGBattleState: Sendable, Equatable {
       pendingCommands: pendingCommands
     )
 
-    self.init(
-      engineState: engineState,
-      combatants: combatants,
-      playerIDs: playerIDs,
-      enemyIDs: enemyIDs
-    )
+    self.init(engineState: engineState, combatants: combatants)
+  }
+
+  /// The player-controlled combatant IDs, derived from the engine groups.
+  public var playerIDs: Set<CombatantID> {
+    engineState.participantIDs(in: .players)
+  }
+
+  /// The enemy combatant IDs, derived from the engine groups.
+  public var enemyIDs: Set<CombatantID> {
+    engineState.participantIDs(in: .enemies)
   }
 
   public var phase: BattlePhase {
@@ -92,12 +101,7 @@ public struct JRPGBattleState: Sendable, Equatable {
   }
 
   public func withEngineState(_ newEngineState: BattleState) -> JRPGBattleState {
-    JRPGBattleState(
-      engineState: newEngineState,
-      combatants: combatants,
-      playerIDs: playerIDs,
-      enemyIDs: enemyIDs
-    )
+    JRPGBattleState(engineState: newEngineState, combatants: combatants)
   }
 
   /// Returns a new state with the provided combatant updated or inserted.
@@ -105,21 +109,9 @@ public struct JRPGBattleState: Sendable, Equatable {
     var newCombatants = combatants
     newCombatants[combatant.id] = combatant
 
-    var newEngineState = engineState.withParticipant(BattleParticipant(id: combatant.id))
-    if playerIDs.contains(combatant.id) {
-      newEngineState = newEngineState.withParticipant(
-        BattleParticipant(id: combatant.id), in: .players)
-    }
-    if enemyIDs.contains(combatant.id) {
-      newEngineState = newEngineState.withParticipant(
-        BattleParticipant(id: combatant.id), in: .enemies)
-    }
-
     return JRPGBattleState(
-      engineState: newEngineState,
-      combatants: newCombatants,
-      playerIDs: playerIDs,
-      enemyIDs: enemyIDs
+      engineState: engineState.withParticipant(BattleParticipant(id: combatant.id)),
+      combatants: newCombatants
     )
   }
 
@@ -136,10 +128,5 @@ public struct JRPGBattleState: Sendable, Equatable {
   /// Returns a new state with all pending commands removed.
   public func removingAllCommands() -> JRPGBattleState {
     withEngineState(engineState.removingAllCommands())
-  }
-
-  public static func == (lhs: JRPGBattleState, rhs: JRPGBattleState) -> Bool {
-    lhs.engineState == rhs.engineState && lhs.combatants == rhs.combatants
-      && lhs.playerIDs == rhs.playerIDs && lhs.enemyIDs == rhs.enemyIDs
   }
 }
