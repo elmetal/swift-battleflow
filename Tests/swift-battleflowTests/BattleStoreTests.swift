@@ -81,3 +81,45 @@ func testJRPGBattleStoreInjectedRules() async throws {
 
   #expect(store.combatant(for: enemy.id)?.stats.hp == 40)
 }
+
+@Test("Store exposes action history as a property and can be reset")
+@MainActor
+func testStoreHistoryAndReset() async throws {
+  let store = BattleFlow.makeStore()
+
+  store.advanceTurn()
+  store.advance(to: .actionExecution)
+  #expect(store.actionHistory == [.incrementTurn, .transitionPhase(.actionExecution)])
+
+  store.reset(to: BattleState(phase: .turnSelection, turnCount: 5))
+  #expect(store.turnCount == 5)
+  #expect(store.actionHistory.isEmpty)
+
+  store.reset()
+  #expect(store.state == BattleState())
+}
+
+@Test("JRPGBattleStore can be reset to a fresh battle")
+@MainActor
+func testJRPGStoreReset() async throws {
+  let store = JRPGBattleFlow.makeStore()
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+
+  store.startBattle(players: [hero], enemies: [])
+  store.reset()
+
+  #expect(store.state == JRPGBattleState())
+  #expect(store.actionHistory.isEmpty)
+}
+
+@Test("BattleStore looks up participants by ID")
+@MainActor
+func testBattleStoreParticipantLookup() async throws {
+  let heroID = CombatantID("hero")
+  let state = BattleState().withParticipant(BattleParticipant(id: heroID), in: .players)
+  let store = BattleFlow.makeStore(initialState: state)
+
+  #expect(store.participant(for: heroID) == BattleParticipant(id: heroID))
+  #expect(store.participant(for: CombatantID("ghost")) == nil)
+  #expect(store.isParticipant(heroID, in: .players))
+}

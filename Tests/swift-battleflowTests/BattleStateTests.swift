@@ -59,3 +59,13 @@ func testJRPGBattleStateDerivedCollections() async throws {
   #expect(healedState.phase == state.phase)
   #expect(healedState.turnCount == state.turnCount)
 }
+
+@Test("BattleState appends and removes pending commands")
+func testBattleStateCommandTransforms() async throws {
+  let state = BattleState()
+    .appendingCommands([BaseCommand(id: "a")])
+    .appendingCommands([BaseCommand(id: "b")])
+  #expect(state.pendingCommands.map(\.id) == ["a", "b"])
+
+  #expect(state.removingAllCommands().pendingCommands.isEmpty)
+}
