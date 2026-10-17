@@ -65,14 +65,56 @@ public struct JRPGRules: Sendable {
   /// The result must not be negative.
   public let physicalDamage: @Sendable (_ attacker: Stats, _ defender: Stats) -> Int
 
-  public init(physicalDamage: @escaping @Sendable (_ attacker: Stats, _ defender: Stats) -> Int) {
+  /// Returns the effect of an item, or `nil` when the item is not defined.
+  ///
+  /// Effect amounts must be positive.
+  public let itemEffect: @Sendable (ItemID) -> ItemEffect?
+
+  public init(
+    physicalDamage: @escaping @Sendable (_ attacker: Stats, _ defender: Stats) -> Int,
+    itemEffect: @escaping @Sendable (ItemID) -> ItemEffect? = { _ in nil }
+  ) {
     self.physicalDamage = physicalDamage
+    self.itemEffect = itemEffect
   }
 
-  /// The default rules: attack minus half of defense, with a minimum of one.
-  public static let standard = JRPGRules { attacker, defender in
-    max(1, attacker.attack - defender.defense / 2)
-  }
+  /// The default rules.
+  ///
+  /// Physical damage is attack minus half of defense, with a minimum of one.
+  /// A potion restores 50 HP, an ether restores 30 MP, and a phoenix down
+  /// revives with 1 HP.
+  public static let standard = JRPGRules(
+    physicalDamage: { attacker, defender in
+      max(1, attacker.attack - defender.defense / 2)
+    },
+    itemEffect: { item in
+      switch item {
+      case .potion: .restoreHP(50)
+      case .ether: .restoreMP(30)
+      case .phoenixDown: .revive(hp: 1)
+      default: nil
+      }
+    }
+  )
+}
+
+/// Describes what an item does to its target.
+public enum ItemEffect: Sendable, Equatable {
+  /// Restores HP of a living target, up to its maximum.
+  case restoreHP(Int)
+
+  /// Restores MP of a living target, up to its maximum.
+  case restoreMP(Int)
+
+  /// Revives a defeated target with the given HP, up to its maximum.
+  case revive(hp: Int)
+}
+
+/// Items defined by the standard rules.
+extension ItemID {
+  public static let potion = ItemID("potion")
+  public static let ether = ItemID("ether")
+  public static let phoenixDown = ItemID("phoenix_down")
 }
 
 /// The action that a combatant ultimately chooses to perform.
