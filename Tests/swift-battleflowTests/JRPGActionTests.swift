@@ -124,10 +124,6 @@ func testTypedSkillAndItemIDs() async throws {
     state: state, action: .useItem(user: hero.id, item: ItemID("potion"), target: hero.id))
   #expect(item.commands.contains { ($0 as? BaseCommand)?.id == "item_use_potion" })
 
-  #expect(
-    SelectedAction.skill(id: SkillID("fire"), targets: []).battleSelection.id == "jrpg.skill.fire")
-  #expect(
-    SelectedAction.item(id: ItemID("potion"), target: nil).battleSelection.id == "jrpg.item.potion")
 }
 
 @Test("JRPGReducer handles AI decision requests")

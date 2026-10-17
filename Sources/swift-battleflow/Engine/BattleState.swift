@@ -53,22 +53,22 @@ public struct BattleParticipant: Sendable, Equatable {
 /// An immutable structure that stores the entire battle state.
 public struct BattleState: Sendable, Equatable {
   /// The current phase of the battle.
-  public let phase: BattlePhase
+  public private(set) var phase: BattlePhase
 
   /// A lookup table of all engine-level participants.
-  public let participants: [CombatantID: BattleParticipant]
+  public private(set) var participants: [CombatantID: BattleParticipant]
 
   /// Participant groups known to the engine.
-  public let groups: [BattleGroupID: Set<CombatantID>]
+  public private(set) var groups: [BattleGroupID: Set<CombatantID>]
 
   /// The current turn counter.
-  public let turnCount: Int
+  public private(set) var turnCount: Int
 
   /// The combatant that is currently acting, if any.
-  public let currentActor: CombatantID?
+  public private(set) var currentActor: CombatantID?
 
   /// Pending commands awaiting execution.
-  public let pendingCommands: [any Command]
+  public private(set) var pendingCommands: [any Command]
 
   public init(
     phase: BattlePhase = .preparation,
@@ -99,56 +99,59 @@ public struct BattleState: Sendable, Equatable {
     return outcome
   }
 
-  /// Returns a new state with the provided participant updated or inserted.
-  public func withParticipant(
-    _ participant: BattleParticipant,
-    in group: BattleGroupID? = nil
-  ) -> BattleState {
-    var newParticipants = participants
-    var newGroups = groups
-    newParticipants[participant.id] = participant
-
-    if let group {
-      newGroups[group, default: []].insert(participant.id)
-    }
-
-    return BattleState(
-      phase: phase,
-      participants: newParticipants,
-      groups: newGroups,
-      turnCount: turnCount,
-      currentActor: currentActor,
-      pendingCommands: pendingCommands
-    )
-  }
-
   /// Returns the participant identifiers in a group.
   public func participantIDs(in group: BattleGroupID) -> Set<CombatantID> {
     groups[group] ?? []
   }
 
+  /// Returns a copy of the state with the changes applied.
+  private func updating(_ update: (inout BattleState) -> Void) -> BattleState {
+    var newState = self
+    update(&newState)
+    return newState
+  }
+}
+
+// MARK: - Transformations
+
+extension BattleState {
+
+  /// Returns a new state with the provided participant updated or inserted.
+  public func withParticipant(
+    _ participant: BattleParticipant,
+    in group: BattleGroupID? = nil
+  ) -> BattleState {
+    updating { state in
+      state.participants[participant.id] = participant
+      if let group {
+        state.groups[group, default: []].insert(participant.id)
+      }
+    }
+  }
+
   /// Returns a new state with a different battle phase.
   public func withPhase(_ newPhase: BattlePhase) -> BattleState {
-    BattleState(
-      phase: newPhase,
-      participants: participants,
-      groups: groups,
-      turnCount: turnCount,
-      currentActor: currentActor,
-      pendingCommands: pendingCommands
-    )
+    updating { $0.phase = newPhase }
+  }
+
+  /// Returns a new state that starts the next turn.
+  ///
+  /// The turn counter increments, and the current actor is cleared.
+  public func advancingTurn() -> BattleState {
+    updating { state in
+      state.turnCount += 1
+      state.currentActor = nil
+    }
+  }
+
+  /// Returns a new state with a different current actor.
+  public func withCurrentActor(_ actorID: CombatantID?) -> BattleState {
+    updating { $0.currentActor = actorID }
   }
 
   /// Returns a new state with additional pending commands appended.
   public func appendingCommands(_ commands: [any Command]) -> BattleState {
-    BattleState(
-      phase: phase,
-      participants: participants,
-      groups: groups,
-      turnCount: turnCount,
-      currentActor: currentActor,
-      pendingCommands: pendingCommands + commands
-    )
+    updating { $0.pendingCommands += commands }
   }
 
   /// Returns a new state without the first pending command that has the given ID.
@@ -158,30 +161,12 @@ public struct BattleState: Sendable, Equatable {
     guard let index = pendingCommands.firstIndex(where: { $0.id == id }) else {
       return self
     }
-
-    var newCommands = pendingCommands
-    newCommands.remove(at: index)
-
-    return BattleState(
-      phase: phase,
-      participants: participants,
-      groups: groups,
-      turnCount: turnCount,
-      currentActor: currentActor,
-      pendingCommands: newCommands
-    )
+    return updating { _ = $0.pendingCommands.remove(at: index) }
   }
 
   /// Returns a new state with all pending commands removed.
   public func removingAllCommands() -> BattleState {
-    BattleState(
-      phase: phase,
-      participants: participants,
-      groups: groups,
-      turnCount: turnCount,
-      currentActor: currentActor,
-      pendingCommands: []
-    )
+    updating { $0.pendingCommands = [] }
   }
 }
 

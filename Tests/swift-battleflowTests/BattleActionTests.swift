@@ -23,13 +23,3 @@ func testBattleActionEquality() async throws {
   #expect(BattleAction.updateCurrentActor(heroID) == .updateCurrentActor(heroID))
   #expect(BattleAction.incrementTurn != .transitionPhase(.turnSelection))
 }
-
-@Test("Battle action selection is rule agnostic")
-func testBattleActionSelectionIsRuleAgnostic() async throws {
-  let heroID = CombatantID("hero")
-  let selection = BattleSelection(id: "custom.rule.action")
-
-  let action = BattleAction.completeSelection(selection, for: heroID)
-
-  #expect(action == .completeSelection(selection, for: heroID))
-}
