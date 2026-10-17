@@ -23,7 +23,7 @@ public enum BattleAction: Sendable, Equatable {
   case beginSelection(for: CombatantID)
 
   /// Completes an action selection with the specified decision.
-  case completeSelection(for: CombatantID, selection: BattleSelection)
+  case completeSelection(BattleSelection, for: CombatantID)
 
   /// Queues one or more command identifiers for later execution.
   case enqueueCommands([String])

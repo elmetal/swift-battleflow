@@ -22,31 +22,31 @@ public struct BattleReducer: Reducer {
     switch action {
 
     case .transitionPhase(let newPhase):
-      return reduceAdvancePhase(state: state, newPhase: newPhase)
+      return reduceTransitionPhase(state: state, newPhase: newPhase)
 
     case .incrementTurn:
-      return reduceAdvanceTurn(state: state)
+      return reduceIncrementTurn(state: state)
 
     // MARK: - Turn Coordination
     case .updateCurrentActor(let actorID):
-      return reduceSetCurrentActor(state: state, actorID: actorID)
+      return reduceUpdateCurrentActor(state: state, actorID: actorID)
 
     case .beginSelection(let combatantID):
-      return reduceBeginActionSelection(state: state, combatantID: combatantID)
+      return reduceBeginSelection(state: state, combatantID: combatantID)
 
-    case .completeSelection(let combatantID, let selection):
-      return reduceCompleteActionSelection(
+    case .completeSelection(let selection, let combatantID):
+      return reduceCompleteSelection(
         state: state, combatantID: combatantID, selection: selection)
 
     // MARK: - Command Management
     case .enqueueCommands(let commandIDs):
-      return reduceAddCommands(state: state, commandIDs: commandIDs)
+      return reduceEnqueueCommands(state: state, commandIDs: commandIDs)
 
     case .markCommandExecuted(let commandID):
-      return reduceExecuteCommand(state: state, commandID: commandID)
+      return reduceMarkCommandExecuted(state: state, commandID: commandID)
 
     case .removeAllCommands:
-      return reduceClearCommands(state: state)
+      return reduceRemoveAllCommands(state: state)
 
     }
   }
@@ -58,7 +58,7 @@ extension BattleReducer {
 
   // MARK: - Battle Flow Control
 
-  private func reduceAdvancePhase(
+  private func reduceTransitionPhase(
     state: BattleState,
     newPhase: BattlePhase
   ) -> Reduction<BattleState, BattleAction> {
@@ -71,7 +71,7 @@ extension BattleReducer {
     return Reduction(state: newState, commands: commands)
   }
 
-  private func reduceAdvanceTurn(state: BattleState) -> Reduction<BattleState, BattleAction> {
+  private func reduceIncrementTurn(state: BattleState) -> Reduction<BattleState, BattleAction> {
     let newState = BattleState(
       phase: state.phase,
       participants: state.participants,
@@ -90,7 +90,7 @@ extension BattleReducer {
 
   // MARK: - Turn Coordination
 
-  private func reduceSetCurrentActor(
+  private func reduceUpdateCurrentActor(
     state: BattleState,
     actorID: CombatantID?
   ) -> Reduction<BattleState, BattleAction> {
@@ -107,7 +107,7 @@ extension BattleReducer {
     return Reduction(state: newState)
   }
 
-  private func reduceBeginActionSelection(
+  private func reduceBeginSelection(
     state: BattleState,
     combatantID: CombatantID
   ) -> Reduction<BattleState, BattleAction> {
@@ -119,7 +119,7 @@ extension BattleReducer {
     return Reduction(state: state, commands: commands)
   }
 
-  private func reduceCompleteActionSelection(
+  private func reduceCompleteSelection(
     state: BattleState,
     combatantID: CombatantID,
     selection: BattleSelection
@@ -134,17 +134,17 @@ extension BattleReducer {
 
   // MARK: - Command Management
 
-  private func reduceAddCommands(
+  private func reduceEnqueueCommands(
     state: BattleState,
     commandIDs: [String]
   ) -> Reduction<BattleState, BattleAction> {
 
     let commands = commandIDs.map { BaseCommand(id: $0, priority: 1) }
-    let newState = state.withCommands(commands)
+    let newState = state.appendingCommands(commands)
     return Reduction(state: newState)
   }
 
-  private func reduceExecuteCommand(
+  private func reduceMarkCommandExecuted(
     state: BattleState,
     commandID: String
   ) -> Reduction<BattleState, BattleAction> {
@@ -153,8 +153,8 @@ extension BattleReducer {
     return Reduction(state: state)
   }
 
-  private func reduceClearCommands(state: BattleState) -> Reduction<BattleState, BattleAction> {
-    let newState = state.withClearedCommands()
+  private func reduceRemoveAllCommands(state: BattleState) -> Reduction<BattleState, BattleAction> {
+    let newState = state.removingAllCommands()
     return Reduction(state: newState)
   }
 }

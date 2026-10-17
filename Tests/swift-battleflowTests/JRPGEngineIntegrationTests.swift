@@ -6,11 +6,11 @@ import Testing
 
 @Test("JRPGReducer forwards engine actions to BattleReducer")
 func testJRPGReducerForwardsEngineActions() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
   let state = JRPGBattleState(
     phase: .turnSelection,
     combatants: [hero.id: hero],
-    playerCombatants: [hero.id],
+    playerIDs: [hero.id],
     turnCount: 1,
     currentActor: hero.id
   )
@@ -20,7 +20,7 @@ func testJRPGReducerForwardsEngineActions() async throws {
   #expect(reduction.state.turnCount == 2)
   #expect(reduction.state.currentActor == nil)
   #expect(reduction.state.combatants == state.combatants)
-  #expect(reduction.state.playerCombatants == state.playerCombatants)
+  #expect(reduction.state.playerIDs == state.playerIDs)
   #expect(reduction.commands.contains { ($0 as? BaseCommand)?.id == "turn_advance" })
 }
 
@@ -44,16 +44,16 @@ func testJRPGBattleStoreIsGenericStore() async throws {
 @MainActor
 func testJRPGBattleStoreRecordsEngineActions() async throws {
   let store = JRPGBattleStore()
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let goblin = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [goblin])
-  store.setCurrentActor(hero.id)
+  store.updateCurrentActor(to: hero.id)
   store.performAttack(attacker: hero.id, target: goblin.id)
   store.advanceTurn()
-  store.advanceToPhase(.actionExecution)
+  store.advance(to: .actionExecution)
 
-  let history = store.getActionHistory()
+  let history = store.actionHistory
   #expect(
     history == [
       .startBattle(players: [hero], enemies: [goblin]),

@@ -16,15 +16,15 @@ private func makeState(
   return JRPGBattleState(
     phase: phase,
     combatants: combatants,
-    playerCombatants: Set(players.map(\.id)),
-    enemyCombatants: Set(enemies.map(\.id))
+    playerIDs: Set(players.map(\.id)),
+    enemyIDs: Set(enemies.map(\.id))
   )
 }
 
 @Test("Attack derives damage from the standard rules")
 func testAttackUsesStandardRules() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", attack: 30, isPlayer: true)
-  let goblin = JRPGBattleFlow.createCharacter(
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", attack: 30, isPlayer: true)
+  let goblin = JRPGBattleFlow.makeCharacter(
     name: "Goblin", hp: 80, defense: 10, isPlayer: false)
   let state = makeState(players: [hero], enemies: [goblin])
 
@@ -39,8 +39,8 @@ func testAttackUsesStandardRules() async throws {
 
 @Test("Attack always deals at least one damage")
 func testAttackMinimumDamage() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", attack: 5, isPlayer: true)
-  let golem = JRPGBattleFlow.createCharacter(
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", attack: 5, isPlayer: true)
+  let golem = JRPGBattleFlow.makeCharacter(
     name: "Golem", hp: 80, defense: 50, isPlayer: false)
   let state = makeState(players: [hero], enemies: [golem])
 
@@ -52,8 +52,8 @@ func testAttackMinimumDamage() async throws {
 
 @Test("Attack uses injected rules")
 func testAttackUsesInjectedRules() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let goblin = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 80, isPlayer: false)
   let state = makeState(players: [hero], enemies: [goblin])
   let reducer = JRPGReducer(rules: JRPGRules(physicalDamage: { _, _ in 7 }))
 
@@ -69,8 +69,8 @@ func testAttackUsesInjectedRules() async throws {
     "defeated attacker", "defeated target", "unknown attacker", "unknown target", "ended battle",
   ])
 func testAttackPreconditions(scenario: String) async throws {
-  var hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  var goblin = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  var hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  var goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
   var attackerID = hero.id
   var targetID = goblin.id
   var phase = BattlePhase.turnSelection
@@ -98,8 +98,8 @@ func testAttackPreconditions(scenario: String) async throws {
 
 @Test("Defeated combatants cannot defend or escape")
 func testDefeatedCombatantCannotAct() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 0, maxHP: 100, isPlayer: true)
-  let goblin = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 0, maxHP: 100, isPlayer: true)
+  let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
   let state = makeState(players: [hero], enemies: [goblin])
 
   for action in [JRPGAction.defend(defender: hero.id), .escape(escaper: hero.id)] {
@@ -111,8 +111,8 @@ func testDefeatedCombatantCannotAct() async throws {
 
 @Test("Skills and items are identified by typed IDs")
 func testTypedSkillAndItemIDs() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let goblin = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
   let state = makeState(players: [hero], enemies: [goblin])
 
   let skill = JRPGReducer().reduce(
