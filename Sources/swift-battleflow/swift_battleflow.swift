@@ -43,6 +43,8 @@ public struct JRPGBattleFlow {
   ///
   /// - Parameters:
   ///   - name: The display name of the character.
+  ///   - id: The combatant's identifier. When omitted, it is derived from the
+  ///     name, so pass an explicit ID for combatants that share a name.
   ///   - hp: The current hit points.
   ///   - maxHP: The maximum hit points. When omitted, the current hit points
   ///     value is reused.
@@ -58,6 +60,7 @@ public struct JRPGBattleFlow {
   ///   a JRPG battle state.
   public static func makeCharacter(
     name: String,
+    id: CombatantID? = nil,
     hp: Int = 100,
     maxHP: Int? = nil,
     mp: Int = 50,
@@ -67,7 +70,7 @@ public struct JRPGBattleFlow {
     speed: Int = 10,
     isPlayer: Bool = true
   ) -> Combatant {
-    let id = CombatantID(name.lowercased().replacingOccurrences(of: " ", with: "_"))
+    let id = id ?? CombatantID(name.lowercased().replacingOccurrences(of: " ", with: "_"))
     let stats = Stats(
       hp: hp,
       maxHP: maxHP ?? hp,

@@ -7,6 +7,8 @@ public enum JRPGAction: Sendable, Equatable {
   case engine(BattleAction)
 
   /// Starts a JRPG battle session.
+  ///
+  /// - Precondition: Every combatant ID is unique across both rosters.
   case startBattle(players: [Combatant], enemies: [Combatant])
 
   /// Ends the JRPG battle with the supplied result.
