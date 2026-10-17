@@ -29,13 +29,17 @@ func testEffectProducesAction() async throws {
   #expect(action == .increment)
 }
 
-@Test("Store dispatches actions produced by effects")
+@Test("Store dispatches actions produced by effects", .timeLimit(.minutes(1)))
 @MainActor
 func testStoreDispatchesEffectActions() async throws {
   let store = Store(initialState: TestState(), reducer: TestReducer())
 
   store.dispatch(.start)
-  try await Task.sleep(nanoseconds: 50_000_000)
+  // Effects run asynchronously; wait for the follow-up action instead of a
+  // fixed delay, which is flaky on loaded machines.
+  while store.state.count == 0 {
+    await Task.yield()
+  }
 
   #expect(store.state.count == 1)
 }
