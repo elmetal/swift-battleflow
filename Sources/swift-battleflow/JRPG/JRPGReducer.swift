@@ -40,10 +40,14 @@ public struct JRPGReducer: Reducer {
       return reduceUseSkill(state: state, user: user, skill: skill, targets: targets)
 
     case .useItem(let user, let item, let target):
-      guard canAct(user, in: state), target.map({ canBeTargeted($0, in: state) }) ?? true else {
+      let target = target ?? user
+      guard canAct(user, in: state),
+        let effect = rules.itemEffect(item),
+        canReceive(effect, target: target, in: state)
+      else {
         return Reduction(state: state)
       }
-      return reduceUseItem(state: state, user: user, item: item, target: target)
+      return reduceUseItem(state: state, item: item, effect: effect, target: target)
 
     case .defend(let defender):
       guard canAct(defender, in: state) else {
@@ -73,6 +77,20 @@ extension JRPGReducer {
   /// Indicates whether the combatant may take an action in the given state.
   fileprivate func canAct(_ id: CombatantID, in state: JRPGBattleState) -> Bool {
     !state.isBattleEnded && canBeTargeted(id, in: state)
+  }
+
+  /// Indicates whether the item effect can apply to the target: revival needs
+  /// a defeated target, and other effects need a living one.
+  fileprivate func canReceive(
+    _ effect: ItemEffect, target: CombatantID, in state: JRPGBattleState
+  ) -> Bool {
+    guard let stats = state.combatants[target]?.stats else {
+      return false
+    }
+    if case .revive = effect {
+      return stats.isDefeated
+    }
+    return !stats.isDefeated
   }
 
   /// Indicates whether the combatant exists and is not defeated.
@@ -198,17 +216,37 @@ extension JRPGReducer {
 
   fileprivate func reduceUseItem(
     state: JRPGBattleState,
-    user: CombatantID,
     item: ItemID,
-    target: CombatantID?
+    effect: ItemEffect,
+    target: CombatantID
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
-    // Placeholder implementation; extend with concrete item logic.
+    guard let targetCombatant = state.combatants[target] else {
+      preconditionFailure("Item preconditions must be checked before reducing.")
+    }
+    let stats = targetCombatant.stats
+
+    let updatedStats: Stats
+    switch effect {
+    case .restoreHP(let amount):
+      precondition(amount > 0, "ItemEffect.restoreHP amount must be positive.")
+      updatedStats = stats.withHP(stats.hp + amount)
+    case .restoreMP(let amount):
+      precondition(amount > 0, "ItemEffect.restoreMP amount must be positive.")
+      updatedStats = stats.withMP(stats.mp + amount)
+    case .revive(let hp):
+      precondition(hp > 0, "ItemEffect.revive hp must be positive.")
+      updatedStats = stats.withHP(hp)
+    }
+
+    let newState = state.withCombatant(targetCombatant.withStats(updatedStats))
+
     let commands: [any Command] = [
-      BaseCommand(id: "item_use_\(item.value)", priority: 2)
+      BaseCommand(id: "item_use_\(item.value)", priority: 2),
+      BaseCommand(id: "item_effect_\(target.value)", priority: 1),
     ]
 
-    return Reduction(state: state, commands: commands)
+    return Reduction(state: newState, commands: commands)
   }
 
   fileprivate func reduceDefend(
