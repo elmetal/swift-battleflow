@@ -34,7 +34,7 @@ public struct BattleReducer: Reducer {
     case .beginSelection(let combatantID):
       return reduceBeginSelection(state: state, combatantID: combatantID)
 
-    case .completeSelection(let combatantID, let selection):
+    case .completeSelection(let selection, let combatantID):
       return reduceCompleteSelection(
         state: state, combatantID: combatantID, selection: selection)
 

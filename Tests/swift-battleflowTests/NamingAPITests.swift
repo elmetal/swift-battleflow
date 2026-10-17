@@ -14,7 +14,7 @@ func testStoreHistoryAndReset() async throws {
   #expect(store.actionHistory == [.incrementTurn, .transitionPhase(.actionExecution)])
 
   store.reset(to: BattleState(phase: .turnSelection, turnCount: 5))
-  #expect(store.currentTurn == 5)
+  #expect(store.turnCount == 5)
   #expect(store.actionHistory.isEmpty)
 
   store.reset()

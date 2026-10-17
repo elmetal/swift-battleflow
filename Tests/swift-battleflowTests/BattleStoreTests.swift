@@ -10,7 +10,7 @@ func testBattleStoreInitialization() async throws {
   let store = BattleStore()
 
   #expect(store.state.phase == .preparation)
-  #expect(store.currentTurn == 0)
+  #expect(store.turnCount == 0)
   #expect(store.currentActor == nil)
   #expect(store.isBattleEnded == false)
 }
@@ -21,11 +21,12 @@ func testBattleStoreEngineDispatch() async throws {
   let store = BattleStore()
   let participantID = CombatantID("hero")
 
-  store.dispatch(.updateCurrentActor(participantID))
+  store.updateCurrentActor(to: participantID)
+  #expect(store.currentActor == participantID)
   store.dispatch(.incrementTurn)
 
   #expect(store.currentActor == nil)
-  #expect(store.currentTurn == 1)
+  #expect(store.turnCount == 1)
 }
 
 @Test("JRPGBattleStore start battle functionality")
@@ -39,7 +40,7 @@ func testJRPGBattleStoreStartBattle() async throws {
   store.startBattle(players: [hero], enemies: [enemy])
 
   #expect(store.currentPhase == .turnSelection)
-  #expect(store.currentTurn == 1)
+  #expect(store.turnCount == 1)
   #expect(store.alivePlayers.count == 1)
   #expect(store.aliveEnemies.count == 1)
 

@@ -55,7 +55,7 @@ extension JRPGBattleStore {
   /// Updates the currently acting combatant.
   ///
   /// - Parameter combatantID: The acting combatant, or `nil` to clear it.
-  public func setCurrentActor(_ combatantID: CombatantID?) {
+  public func updateCurrentActor(to combatantID: CombatantID?) {
     dispatch(.engine(.updateCurrentActor(combatantID)))
   }
 
@@ -97,7 +97,7 @@ extension JRPGBattleStore {
   }
 
   /// The number of turns that have elapsed.
-  public var currentTurn: Int {
+  public var turnCount: Int {
     return state.turnCount
   }
 

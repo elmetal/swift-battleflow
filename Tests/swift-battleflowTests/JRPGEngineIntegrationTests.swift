@@ -48,7 +48,7 @@ func testJRPGBattleStoreRecordsEngineActions() async throws {
   let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [goblin])
-  store.setCurrentActor(hero.id)
+  store.updateCurrentActor(to: hero.id)
   store.performAttack(attacker: hero.id, target: goblin.id)
   store.advanceTurn()
   store.advance(to: .actionExecution)

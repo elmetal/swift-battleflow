@@ -29,7 +29,7 @@ func testBattleActionSelectionIsRuleAgnostic() async throws {
   let heroID = CombatantID("hero")
   let selection = BattleSelection(id: "custom.rule.action")
 
-  let action = BattleAction.completeSelection(for: heroID, selection: selection)
+  let action = BattleAction.completeSelection(selection, for: heroID)
 
-  #expect(action == .completeSelection(for: heroID, selection: selection))
+  #expect(action == .completeSelection(selection, for: heroID))
 }

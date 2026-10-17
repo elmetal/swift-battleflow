@@ -136,7 +136,7 @@ extension BattleStore {
   /// Updates the currently acting participant.
   ///
   /// - Parameter participantID: The acting participant, or `nil` to clear it.
-  public func setCurrentActor(_ participantID: CombatantID?) {
+  public func updateCurrentActor(to participantID: CombatantID?) {
     dispatch(.updateCurrentActor(participantID))
   }
 
@@ -168,7 +168,7 @@ extension BattleStore {
   }
 
   /// The number of turns that have elapsed.
-  public var currentTurn: Int {
+  public var turnCount: Int {
     return state.turnCount
   }
 
