@@ -53,58 +53,25 @@ func testReducerAttack() async throws {
     enemyCombatants: [enemy.id]
   )
 
-  let action = JRPGAction.attack(attacker: hero.id, target: enemy.id, damage: 25)
+  let action = JRPGAction.attack(attacker: hero.id, target: enemy.id)
   let reduction = JRPGReducer().reduce(state: state, action: action)
   let newState = reduction.state
 
   let updatedEnemy = newState.combatants[enemy.id]!
-  #expect(updatedEnemy.stats.hp == 55)  // 80 - 25 = 55
+  #expect(updatedEnemy.stats.hp == 67)  // 80 - (20 - 15 / 2) = 67
   #expect(updatedEnemy.stats.isDefeated == false)
   #expect(reduction.commands.isEmpty == false)
 }
 
-@Test("Reducer handles HP change action")
-func testReducerChangeHP() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 50, maxHP: 100, isPlayer: true)
-  let state = JRPGBattleState(
-    combatants: [hero.id: hero],
-    playerCombatants: [hero.id]
-  )
-
-  // 回復（maxHP = 100なので80まで回復可能）
-  let healAction = JRPGAction.changeHP(target: hero.id, amount: 30)
-  let healedState = JRPGReducer().reduce(state: state, action: healAction).state
-  let healedHero = healedState.combatants[hero.id]!
-  #expect(healedHero.stats.hp == 80)  // 50 + 30 = 80
-
-  // ダメージ
-  let damageAction = JRPGAction.changeHP(target: hero.id, amount: -20)
-  let damagedState = JRPGReducer().reduce(state: healedState, action: damageAction).state
-  let damagedHero = damagedState.combatants[hero.id]!
-  #expect(damagedHero.stats.hp == 60)  // 80 - 20 = 60
-}
-
-@Test("Reducer clamps MP changes and handles escape")
-func testReducerMPChangeAndEscape() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Mage", mp: 30, maxMP: 40, isPlayer: true)
+@Test("Reducer handles player escape")
+func testReducerEscape() async throws {
+  let hero = JRPGBattleFlow.createCharacter(name: "Mage", isPlayer: true)
   let state = JRPGBattleState(
     phase: .actionExecution,
     combatants: [hero.id: hero],
     playerCombatants: [hero.id],
     enemyCombatants: []
   )
-
-  let mpChangedState = JRPGReducer().reduce(
-    state: state, action: .changeMP(target: hero.id, amount: 20)
-  ).state
-  let increasedHero = mpChangedState.combatants[hero.id]!
-  #expect(increasedHero.stats.mp == 40)
-
-  let mpDepletedState = JRPGReducer().reduce(
-    state: mpChangedState, action: .changeMP(target: hero.id, amount: -100)
-  ).state
-  let depletedHero = mpDepletedState.combatants[hero.id]!
-  #expect(depletedHero.stats.mp == 0)
 
   let escapeReduction = JRPGReducer().reduce(
     state: state, action: .escape(escaper: hero.id))
@@ -137,11 +104,11 @@ func testJRPGReducerActionDirectly() async throws {
 
   let reduction = reducer.reduce(
     state: state,
-    action: JRPGAction.attack(attacker: hero.id, target: enemy.id, damage: 15)
+    action: JRPGAction.attack(attacker: hero.id, target: enemy.id)
   )
 
-  #expect(reduction.state.combatants[enemy.id]?.stats.hp == 25)
+  #expect(reduction.state.combatants[enemy.id]?.stats.hp == 27)
   #expect(
-    reduction.commands.contains { ($0 as? BaseCommand)?.id == "damage_effect_\(enemy.id.value)_15" }
+    reduction.commands.contains { ($0 as? BaseCommand)?.id == "damage_effect_\(enemy.id.value)_13" }
   )
 }

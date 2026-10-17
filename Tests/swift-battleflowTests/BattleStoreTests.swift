@@ -60,8 +60,23 @@ func testJRPGBattleStoreAttack() async throws {
   let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [enemy])
-  store.performAttack(attacker: hero.id, target: enemy.id, damage: 30)
+  store.performAttack(attacker: hero.id, target: enemy.id)
 
   let updatedEnemy = store.getCombatant(enemy.id)!
-  #expect(updatedEnemy.stats.hp == 50)  // 80 - 30 = 50
+  #expect(updatedEnemy.stats.hp == 67)  // 80 - (20 - 15 / 2) = 67
+}
+
+@Test("JRPGBattleStore uses the injected reducer rules")
+@MainActor
+func testJRPGBattleStoreInjectedRules() async throws {
+  let store = JRPGBattleStore(
+    reducer: JRPGReducer(rules: JRPGRules(physicalDamage: { _, _ in 40 })))
+
+  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
+  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+
+  store.startBattle(players: [hero], enemies: [enemy])
+  store.performAttack(attacker: hero.id, target: enemy.id)
+
+  #expect(store.getCombatant(enemy.id)?.stats.hp == 40)
 }

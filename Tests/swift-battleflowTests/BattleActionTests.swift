@@ -11,7 +11,7 @@ func testJRPGActionMetadata() async throws {
   #expect(escapeAction.metadata.isInstant == true)
 
   let attackAction = JRPGAction.attack(
-    attacker: CombatantID("a"), target: CombatantID("b"), damage: 10)
+    attacker: CombatantID("a"), target: CombatantID("b"))
   #expect(attackAction.metadata.priority == .attack)
   #expect(attackAction.metadata.isInstant == false)
 }

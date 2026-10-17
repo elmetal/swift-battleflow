@@ -15,12 +15,21 @@ public final class JRPGBattleStore {
   /// A debug-friendly log of dispatched JRPG actions.
   private var actionHistory: [JRPGAction] = []
 
+  /// The reducer that applies the JRPG rules.
+  private let reducer: JRPGReducer
+
   /// Creates a store using the provided initial JRPG battle state.
   ///
-  /// - Parameter initialState: The starting state. The default value produces
-  ///   an empty battle.
-  public init(initialState: JRPGBattleState = JRPGBattleState()) {
+  /// - Parameters:
+  ///   - initialState: The starting state. The default value produces an
+  ///     empty battle.
+  ///   - reducer: The reducer that applies the JRPG rules.
+  public init(
+    initialState: JRPGBattleState = JRPGBattleState(),
+    reducer: JRPGReducer = JRPGReducer()
+  ) {
     self.state = initialState
+    self.reducer = reducer
   }
 
   /// Dispatches a single action synchronously.
@@ -29,7 +38,7 @@ public final class JRPGBattleStore {
   public func dispatch(_ action: JRPGAction) {
     actionHistory.append(action)
 
-    let reduction = JRPGReducer().reduce(state: state, action: action)
+    let reduction = reducer.reduce(state: state, action: action)
     state = reduction.state
 
     Task {
@@ -166,24 +175,13 @@ extension JRPGBattleStore {
     dispatch(.endBattle(result: result))
   }
 
-  /// Performs an attack action with precomputed damage.
+  /// Performs a basic attack. Damage is derived from the store's rules.
   ///
   /// - Parameters:
   ///   - attacker: The attacking combatant.
   ///   - target: The combatant receiving the attack.
-  ///   - damage: The amount of damage to apply.
-  public func performAttack(attacker: CombatantID, target: CombatantID, damage: Int) {
-    dispatch(.attack(attacker: attacker, target: target, damage: damage))
-  }
-
-  /// Adjusts a combatant's hit points.
-  ///
-  /// - Parameters:
-  ///   - target: The combatant receiving the change.
-  ///   - amount: The delta to apply. Positive values heal, negative values
-  ///     inflict damage.
-  public func changeHP(target: CombatantID, amount: Int) {
-    dispatch(.changeHP(target: target, amount: amount))
+  public func performAttack(attacker: CombatantID, target: CombatantID) {
+    dispatch(.attack(attacker: attacker, target: target))
   }
 
   /// Updates the currently acting combatant.

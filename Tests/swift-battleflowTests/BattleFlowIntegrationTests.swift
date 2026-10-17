@@ -17,16 +17,21 @@ func testFullBattleFlow() async throws {
   #expect(store.currentPhase == .turnSelection)
   #expect(store.isBattleEnded == false)
 
-  // ヒーローがゴブリンを攻撃
-  store.performAttack(attacker: hero.id, target: goblin.id, damage: 30)
+  // ヒーローがゴブリンを攻撃（25 - 15 / 2 = 18 ダメージ）
+  store.performAttack(attacker: hero.id, target: goblin.id)
   let damagedGoblin = store.getCombatant(goblin.id)!
-  #expect(damagedGoblin.stats.hp == 20)  // 50 - 30 = 20
+  #expect(damagedGoblin.stats.hp == 32)  // 50 - 18 = 32
 
-  // もう一度攻撃してゴブリンを倒す
-  store.performAttack(attacker: hero.id, target: goblin.id, damage: 25)
+  // さらに攻撃してゴブリンを倒す
+  store.performAttack(attacker: hero.id, target: goblin.id)
+  store.performAttack(attacker: hero.id, target: goblin.id)
   let defeatedGoblin = store.getCombatant(goblin.id)!
-  #expect(defeatedGoblin.stats.hp == 0)  // 20 - 25 = 0 (min)
+  #expect(defeatedGoblin.stats.hp == 0)  // 32 - 18 - 18 = 0 (min)
   #expect(defeatedGoblin.stats.isDefeated == true)
+
+  // 倒れたゴブリンへの攻撃は無視される
+  store.performAttack(attacker: hero.id, target: goblin.id)
+  #expect(store.getCombatant(goblin.id) == defeatedGoblin)
 
   // 戦闘終了
   store.endBattle(with: .victory)
