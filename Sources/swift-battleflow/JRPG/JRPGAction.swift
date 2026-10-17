@@ -14,6 +14,26 @@ public enum JRPGAction: Sendable, Equatable {
   /// Ends the JRPG battle with the supplied result.
   case endBattle(result: BattleResult)
 
+  /// Records the action a combatant will perform this turn, replacing any
+  /// earlier selection.
+  ///
+  /// Ignored outside ``BattlePhase/turnSelection`` or when the combatant
+  /// cannot act.
+  case select(SelectedAction, by: CombatantID)
+
+  /// Orders the selected actions and starts performing them.
+  ///
+  /// Actors are ordered by ``SelectedAction/priority``, then by speed, then by
+  /// ID. Ignored outside ``BattlePhase/turnSelection`` or until every living
+  /// combatant has selected.
+  case executeTurn
+
+  /// Performs the next actor's selected action, or ends the turn when every
+  /// actor has acted.
+  ///
+  /// Ignored outside ``BattlePhase/actionExecution``.
+  case performNextAction
+
   /// Performs a basic attack.
   case attack(attacker: CombatantID, target: CombatantID)
 
@@ -31,24 +51,4 @@ public enum JRPGAction: Sendable, Equatable {
 
   /// Requests an AI-controlled combatant to select an action.
   case requestAIDecision(for: CombatantID)
-}
-
-extension JRPGAction {
-  /// Provides default metadata for the selected action.
-  public var metadata: ActionMetadata {
-    switch self {
-    case .escape:
-      return ActionMetadata(priority: .escape, isInstant: true)
-    case .useItem:
-      return ActionMetadata(priority: .item)
-    case .defend:
-      return ActionMetadata(priority: .defend)
-    case .attack:
-      return ActionMetadata(priority: .attack)
-    case .useSkill:
-      return ActionMetadata(priority: .skill)
-    default:
-      return ActionMetadata()
-    }
-  }
 }

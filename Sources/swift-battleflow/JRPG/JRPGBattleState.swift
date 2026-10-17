@@ -12,19 +12,29 @@ public struct JRPGBattleState: Sendable, Equatable {
   public let engineState: BattleState
   public let combatants: [CombatantID: Combatant]
 
-  /// Creates a state from an engine state and its combatants.
+  /// The actions that combatants selected for the current turn.
+  public let selections: [CombatantID: SelectedAction]
+
+  /// Creates a state from an engine state, its combatants, and their
+  /// selections.
   ///
-  /// - Precondition: The combatant IDs match the engine participant IDs.
+  /// - Precondition: The combatant IDs match the engine participant IDs, and
+  ///   every selection belongs to a combatant.
   public init(
     engineState: BattleState = BattleState(),
-    combatants: [CombatantID: Combatant] = [:]
+    combatants: [CombatantID: Combatant] = [:],
+    selections: [CombatantID: SelectedAction] = [:]
   ) {
     precondition(
       Set(combatants.keys) == Set(engineState.participants.keys),
       "Every combatant must be an engine participant, and vice versa.")
+    precondition(
+      selections.keys.allSatisfy { combatants[$0] != nil },
+      "Every selection must belong to a combatant.")
 
     self.engineState = engineState
     self.combatants = combatants
+    self.selections = selections
   }
 
   public init(
@@ -98,6 +108,11 @@ public struct JRPGBattleState: Sendable, Equatable {
     }
   }
 
+  /// Returns every combatant that is still active.
+  public var livingCombatants: [Combatant] {
+    combatants.values.filter { !$0.stats.isDefeated }
+  }
+
   /// Returns the enemy combatants that are still active.
   public var aliveEnemies: [Combatant] {
     enemyIDs.compactMap { id in
@@ -106,7 +121,20 @@ public struct JRPGBattleState: Sendable, Equatable {
   }
 
   public func withEngineState(_ newEngineState: BattleState) -> JRPGBattleState {
-    JRPGBattleState(engineState: newEngineState, combatants: combatants)
+    JRPGBattleState(engineState: newEngineState, combatants: combatants, selections: selections)
+  }
+
+  /// Returns a new state that records the combatant's selection.
+  public func withSelection(_ selection: SelectedAction, for id: CombatantID) -> JRPGBattleState {
+    var newSelections = selections
+    newSelections[id] = selection
+    return JRPGBattleState(
+      engineState: engineState, combatants: combatants, selections: newSelections)
+  }
+
+  /// Returns a new state without any selections.
+  public func removingAllSelections() -> JRPGBattleState {
+    JRPGBattleState(engineState: engineState, combatants: combatants)
   }
 
   /// Returns a new state with the provided combatant updated or inserted.
@@ -116,7 +144,8 @@ public struct JRPGBattleState: Sendable, Equatable {
 
     return JRPGBattleState(
       engineState: engineState.withParticipant(BattleParticipant(id: combatant.id)),
-      combatants: newCombatants
+      combatants: newCombatants,
+      selections: selections
     )
   }
 

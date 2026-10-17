@@ -27,6 +27,26 @@ public struct JRPGReducer: Reducer {
     case .endBattle(let result):
       return reduceEndBattle(state: state, result: result)
 
+    case .select(let selection, let combatantID):
+      guard state.phase == .turnSelection, canAct(combatantID, in: state) else {
+        return Reduction(state: state)
+      }
+      return Reduction(state: state.withSelection(selection, for: combatantID))
+
+    case .executeTurn:
+      guard state.phase == .turnSelection,
+        state.livingCombatants.allSatisfy({ state.selections[$0.id] != nil })
+      else {
+        return Reduction(state: state)
+      }
+      return reduceExecuteTurn(state: state)
+
+    case .performNextAction:
+      guard state.phase == .actionExecution else {
+        return Reduction(state: state)
+      }
+      return reducePerformNextAction(state: state)
+
     case .attack(let attacker, let target):
       guard canAct(attacker, in: state), canBeTargeted(target, in: state) else {
         return Reduction(state: state)
@@ -164,6 +184,59 @@ extension JRPGReducer {
     ]
 
     return Reduction(state: newState, commands: commands)
+  }
+
+  // MARK: - Turn Flow
+
+  fileprivate func reduceExecuteTurn(
+    state: JRPGBattleState
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
+
+    let actors = state.livingCombatants.map { combatant in
+      guard let selection = state.selections[combatant.id] else {
+        preconditionFailure("Every living combatant must select before the turn executes.")
+      }
+      return (id: combatant.id, priority: selection.priority, speed: combatant.stats.speed)
+    }
+
+    // Higher priority first, then higher speed, then ascending ID. The ID is
+    // compared in swapped order so that it sorts ascending.
+    let order = actors.sorted { lhs, rhs in
+      (lhs.priority, lhs.speed, rhs.id.value) > (rhs.priority, rhs.speed, lhs.id.value)
+    }.map(\.id)
+
+    let newState = state.withEngineState(
+      state.engineState.withPhase(.actionExecution).withActionOrder(order))
+
+    let commands: [any Command] = [
+      BaseCommand(id: "turn_execution_begin", priority: 1)
+    ]
+
+    return Reduction(state: newState, commands: commands)
+  }
+
+  fileprivate func reducePerformNextAction(
+    state: JRPGBattleState
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
+
+    let advanced = state.withEngineState(state.engineState.advancingActor())
+
+    guard let actor = advanced.currentActor else {
+      let nextTurn = advanced.removingAllSelections().withEngineState(
+        advanced.engineState.advancingTurn().withPhase(.turnSelection))
+      let commands: [any Command] = [
+        BaseCommand(id: "turn_end", priority: 1)
+      ]
+      return Reduction(state: nextTurn, commands: commands)
+    }
+
+    guard let selection = advanced.selections[actor] else {
+      preconditionFailure("Every scheduled actor must have a selection.")
+    }
+
+    // The intent's own preconditions apply, so an actor defeated earlier in
+    // the turn, or an invalid target, results in no action.
+    return reduce(state: advanced, action: selection.intent(by: actor))
   }
 
   // MARK: - Character Actions

@@ -43,6 +43,25 @@ extension JRPGBattleStore {
     dispatch(.endBattle(result: result))
   }
 
+  /// Records the action a combatant will perform this turn.
+  ///
+  /// - Parameters:
+  ///   - selection: The action to perform.
+  ///   - combatantID: The combatant that selects the action.
+  public func select(_ selection: SelectedAction, by combatantID: CombatantID) {
+    dispatch(.select(selection, by: combatantID))
+  }
+
+  /// Orders the selected actions and starts performing them.
+  public func executeTurn() {
+    dispatch(.executeTurn)
+  }
+
+  /// Performs the next actor's selected action, or ends the turn.
+  public func performNextAction() {
+    dispatch(.performNextAction)
+  }
+
   /// Performs a basic attack. Damage is derived from the store's rules.
   ///
   /// - Parameters:
