@@ -1,14 +1,25 @@
 import Foundation
 
+/// Identifies how a battle ended.
+///
+/// The engine is rule-agnostic, so rule sets define their own outcomes, for
+/// example as static members in an extension.
+public struct BattleOutcome: Hashable, Sendable {
+  public let value: String
+
+  public init(_ value: String) {
+    precondition(!value.isEmpty, "BattleOutcome value must not be empty.")
+    self.value = value
+  }
+}
+
 /// Represents the current phase of a battle sequence.
 public enum BattlePhase: Sendable, Equatable {
   case preparation  // Battle setup.
   case turnSelection  // Choosing the next actor.
   case actionExecution  // Resolving chosen actions.
   case effectResolution  // Processing pending effects.
-  case victory  // Players succeed.
-  case defeat  // Players lose.
-  case escape  // Battle ends by escape.
+  case ended(BattleOutcome)  // The battle is over with a rule-defined outcome.
 }
 
 /// Identifies a combatant participating in the battle.
@@ -77,12 +88,15 @@ public struct BattleState: Sendable, Equatable {
 
   /// Indicates whether the battle has reached a terminal phase.
   public var isBattleEnded: Bool {
-    switch phase {
-    case .victory, .defeat, .escape:
-      return true
-    default:
-      return false
+    outcome != nil
+  }
+
+  /// The outcome of the battle, or `nil` while it is ongoing.
+  public var outcome: BattleOutcome? {
+    guard case .ended(let outcome) = phase else {
+      return nil
     }
+    return outcome
   }
 
   /// Returns a new state with the provided participant updated or inserted.

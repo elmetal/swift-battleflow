@@ -75,7 +75,8 @@ func testReducerEscape() async throws {
 
   let escapeReduction = JRPGReducer().reduce(
     state: state, action: .escape(escaper: hero.id))
-  #expect(escapeReduction.state.phase == .escape)
+  #expect(escapeReduction.state.phase == .ended(.escape))
+  #expect(escapeReduction.state.result == .escape)
   #expect(escapeReduction.commands.contains { ($0 as? BaseCommand)?.id == "escape_success" })
 }
 

@@ -35,7 +35,7 @@ func testFullBattleFlow() async throws {
 
   // 戦闘終了
   store.endBattle(with: .victory)
-  #expect(store.currentPhase == .victory)
+  #expect(store.currentPhase == .ended(.victory))
   #expect(store.isBattleEnded == true)
 }
 
