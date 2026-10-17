@@ -31,19 +31,6 @@ public struct BattleReducer: Reducer {
     case .updateCurrentActor(let actorID):
       return reduceUpdateCurrentActor(state: state, actorID: actorID)
 
-    case .beginSelection(let combatantID):
-      guard canSelect(combatantID, in: state) else {
-        return Reduction(state: state)
-      }
-      return reduceBeginSelection(state: state, combatantID: combatantID)
-
-    case .completeSelection(let selection, let combatantID):
-      guard canSelect(combatantID, in: state) else {
-        return Reduction(state: state)
-      }
-      return reduceCompleteSelection(
-        state: state, combatantID: combatantID, selection: selection)
-
     // MARK: - Command Management
     case .enqueueCommands(let commands):
       return reduceEnqueueCommands(state: state, commands: commands)
@@ -61,13 +48,6 @@ public struct BattleReducer: Reducer {
 // MARK: - Private Reducer Methods
 
 extension BattleReducer {
-
-  // MARK: - Preconditions
-
-  /// Indicates whether the participant may make a selection in the given state.
-  private func canSelect(_ id: CombatantID, in state: BattleState) -> Bool {
-    !state.isBattleEnded && state.participants[id] != nil
-  }
 
   // MARK: - Battle Flow Control
 
@@ -104,32 +84,6 @@ extension BattleReducer {
     let newState = state.withCurrentActor(actorID)
 
     return Reduction(state: newState)
-  }
-
-  private func reduceBeginSelection(
-    state: BattleState,
-    combatantID: CombatantID
-  ) -> Reduction<BattleState, BattleAction> {
-
-    let commands: [any Command] = [
-      BaseCommand(id: "action_selection_begin_\(combatantID.value)", priority: 1)
-    ]
-
-    return Reduction(state: state.removingSelection(for: combatantID), commands: commands)
-  }
-
-  private func reduceCompleteSelection(
-    state: BattleState,
-    combatantID: CombatantID,
-    selection: BattleSelection
-  ) -> Reduction<BattleState, BattleAction> {
-
-    let commands: [any Command] = [
-      BaseCommand(id: "action_selection_complete_\(combatantID.value)", priority: 1)
-    ]
-
-    return Reduction(
-      state: state.withSelection(selection, for: combatantID), commands: commands)
   }
 
   // MARK: - Command Management

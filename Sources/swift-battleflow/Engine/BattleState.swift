@@ -67,9 +67,6 @@ public struct BattleState: Sendable, Equatable {
   /// The combatant that is currently acting, if any.
   public private(set) var currentActor: CombatantID?
 
-  /// The selections that participants completed during the current turn.
-  public private(set) var selections: [CombatantID: BattleSelection]
-
   /// Pending commands awaiting execution.
   public private(set) var pendingCommands: [any Command]
 
@@ -79,7 +76,6 @@ public struct BattleState: Sendable, Equatable {
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
-    selections: [CombatantID: BattleSelection] = [:],
     pendingCommands: [any Command] = []
   ) {
     self.phase = phase
@@ -87,7 +83,6 @@ public struct BattleState: Sendable, Equatable {
     self.groups = groups
     self.turnCount = turnCount
     self.currentActor = currentActor
-    self.selections = selections
     self.pendingCommands = pendingCommands
   }
 
@@ -141,29 +136,17 @@ extension BattleState {
 
   /// Returns a new state that starts the next turn.
   ///
-  /// The turn counter increments, and the current actor and the turn's
-  /// selections are cleared.
+  /// The turn counter increments, and the current actor is cleared.
   public func advancingTurn() -> BattleState {
     updating { state in
       state.turnCount += 1
       state.currentActor = nil
-      state.selections = [:]
     }
   }
 
   /// Returns a new state with a different current actor.
   public func withCurrentActor(_ actorID: CombatantID?) -> BattleState {
     updating { $0.currentActor = actorID }
-  }
-
-  /// Returns a new state that records a participant's selection.
-  public func withSelection(_ selection: BattleSelection, for id: CombatantID) -> BattleState {
-    updating { $0.selections[id] = selection }
-  }
-
-  /// Returns a new state without the participant's selection.
-  public func removingSelection(for id: CombatantID) -> BattleState {
-    updating { $0.selections[id] = nil }
   }
 
   /// Returns a new state with additional pending commands appended.
@@ -195,7 +178,6 @@ extension BattleState {
   public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
     lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
       && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
-      && lhs.selections == rhs.selections
       && lhs.pendingCommands.elementsEqual(rhs.pendingCommands) { $0.isEqual(to: $1) }
   }
 }

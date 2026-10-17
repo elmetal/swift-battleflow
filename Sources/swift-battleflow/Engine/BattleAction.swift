@@ -1,13 +1,3 @@
-/// A rule-agnostic action selection chosen by a combatant.
-public struct BattleSelection: Sendable, Equatable {
-  public let id: String
-
-  public init(id: String) {
-    precondition(!id.isEmpty, "BattleSelection id must not be empty.")
-    self.id = id
-  }
-}
-
 /// Describes engine-level actions that coordinate battle flow and commands.
 public enum BattleAction: Sendable, Equatable {
   /// Advances to the next phase in the battle flow.
@@ -18,16 +8,6 @@ public enum BattleAction: Sendable, Equatable {
 
   /// Sets the combatant that is currently acting.
   case updateCurrentActor(CombatantID?)
-
-  /// Starts a new selection for a participant, discarding any previous one.
-  ///
-  /// Ignored when the battle has ended or the participant is unknown.
-  case beginSelection(for: CombatantID)
-
-  /// Records the participant's selection for the current turn.
-  ///
-  /// Ignored when the battle has ended or the participant is unknown.
-  case completeSelection(BattleSelection, for: CombatantID)
 
   /// Queues commands for later execution.
   case enqueueCommands([any Command])
@@ -54,13 +34,6 @@ extension BattleAction {
       return true
     case (.updateCurrentActor(let lhs), .updateCurrentActor(let rhs)):
       return lhs == rhs
-    case (.beginSelection(let lhs), .beginSelection(let rhs)):
-      return lhs == rhs
-    case (
-      .completeSelection(let lhsSelection, let lhsID),
-      .completeSelection(let rhsSelection, let rhsID)
-    ):
-      return lhsSelection == rhsSelection && lhsID == rhsID
     case (.enqueueCommands(let lhs), .enqueueCommands(let rhs)):
       return lhs.elementsEqual(rhs) { $0.isEqual(to: $1) }
     case (.markCommandExecuted(let lhs), .markCommandExecuted(let rhs)):
