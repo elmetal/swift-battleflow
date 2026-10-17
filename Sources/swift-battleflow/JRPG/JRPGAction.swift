@@ -3,6 +3,9 @@
 /// Actions express what a participant wants to do. Outcomes such as damage are
 /// derived by ``JRPGReducer`` from ``JRPGRules`` and the current state.
 public enum JRPGAction: Sendable, Equatable {
+  /// Forwards a rule-agnostic engine action to ``BattleReducer``.
+  case engine(BattleAction)
+
   /// Starts a JRPG battle session.
   case startBattle(players: [Combatant], enemies: [Combatant])
 
