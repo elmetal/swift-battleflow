@@ -136,11 +136,14 @@ func testPerformTurn() async throws {
 @Test("A combatant defeated before its turn does not act")
 func testDefeatedActorIsSkipped() async throws {
   let archmage = JRPGBattleFlow.makeCharacter(name: "Mage", hp: 60, attack: 500, speed: 20)
+  // A slower second enemy keeps the battle going after the goblin falls.
+  let slime = JRPGBattleFlow.makeCharacter(name: "Slime", hp: 50, speed: 1, isPlayer: false)
   let state = reduce(
-    started(players: [hero, archmage]),
+    started(players: [hero, archmage], enemies: [goblin, slime]),
     .select(.defend, by: hero.id),
     .select(.attack(target: goblin.id), by: archmage.id),
     .select(.attack(target: hero.id), by: goblin.id),
+    .select(.attack(target: hero.id), by: slime.id),
     .executeTurn,
     .performNextAction,
     .performNextAction)
