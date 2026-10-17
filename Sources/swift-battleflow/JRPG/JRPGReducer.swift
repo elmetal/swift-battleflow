@@ -18,6 +18,9 @@ public struct JRPGReducer: Reducer {
     JRPGBattleState, JRPGAction
   > {
     switch action {
+    case .engine(let engineAction):
+      return reduceEngine(state: state, action: engineAction)
+
     case .startBattle(let players, let enemies):
       return reduceStartBattle(state: state, players: players, enemies: enemies)
 
@@ -79,6 +82,22 @@ extension JRPGReducer {
 }
 
 extension JRPGReducer {
+
+  // MARK: - Engine Forwarding
+
+  fileprivate func reduceEngine(
+    state: JRPGBattleState,
+    action: BattleAction
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
+
+    let reduction = BattleReducer().reduce(state: state.engineState, action: action)
+
+    return Reduction(
+      state: state.withEngineState(reduction.state),
+      commands: reduction.commands,
+      effects: reduction.effects.map { $0.map(JRPGAction.engine) }
+    )
+  }
 
   // MARK: - Battle Flow Control
 

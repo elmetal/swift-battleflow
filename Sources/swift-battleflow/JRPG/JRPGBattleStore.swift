@@ -1,66 +1,20 @@
-import Foundation
-import Observation
+/// A store specialized for the default JRPG rule set.
+public typealias JRPGBattleStore = Store<JRPGReducer>
 
-/// A battle store for the default JRPG rule set.
-@Observable
-@MainActor
-public final class JRPGBattleStore {
-
-  /// The current JRPG battle state.
-  public private(set) var state: JRPGBattleState
-
-  /// An optional handler used to execute commands.
-  public var commandHandler: ((any Command) async -> Void)?
-
-  /// A debug-friendly log of dispatched JRPG actions.
-  private var actionHistory: [JRPGAction] = []
-
-  /// The reducer that applies the JRPG rules.
-  private let reducer: JRPGReducer
-
+extension JRPGBattleStore {
   /// Creates a store using the provided initial JRPG battle state.
   ///
-  /// - Parameters:
-  ///   - initialState: The starting state. The default value produces an
-  ///     empty battle.
-  ///   - reducer: The reducer that applies the JRPG rules.
-  public init(
-    initialState: JRPGBattleState = JRPGBattleState(),
-    reducer: JRPGReducer = JRPGReducer()
-  ) {
-    self.state = initialState
-    self.reducer = reducer
+  /// - Parameter initialState: The starting state. The default value produces
+  ///   an empty battle.
+  public convenience init(initialState: JRPGBattleState = JRPGBattleState()) {
+    self.init(initialState: initialState, reducer: JRPGReducer())
   }
 
-  /// Dispatches a single action synchronously.
+  /// Creates an empty-battle store that applies the provided reducer.
   ///
-  /// - Parameter action: The action to process.
-  public func dispatch(_ action: JRPGAction) {
-    actionHistory.append(action)
-
-    let reduction = reducer.reduce(state: state, action: action)
-    state = reduction.state
-
-    Task {
-      await executeCommands(reduction.commands)
-      await executeEffects(reduction.effects)
-    }
-  }
-
-  /// Dispatches a sequence of actions in order.
-  ///
-  /// - Parameter actions: The ordered actions to process.
-  public func dispatch(_ actions: [JRPGAction]) {
-    for action in actions {
-      dispatch(action)
-    }
-  }
-
-  /// Dispatches an action from asynchronous contexts.
-  ///
-  /// - Parameter action: The action to process.
-  public func dispatchAsync(_ action: JRPGAction) async {
-    dispatch(action)
+  /// - Parameter reducer: The reducer that applies the JRPG rules.
+  public convenience init(reducer: JRPGReducer) {
+    self.init(initialState: JRPGBattleState(), reducer: reducer)
   }
 
   /// Resets the state to the supplied value or a fresh battle.
@@ -68,90 +22,7 @@ public final class JRPGBattleStore {
   /// - Parameter newState: The replacement state. When omitted, a new
   ///   ``JRPGBattleState`` instance is used.
   public func resetState(_ newState: JRPGBattleState? = nil) {
-    state = newState ?? JRPGBattleState()
-    actionHistory.removeAll()
-  }
-
-  /// Returns a snapshot of the action history.
-  public func getActionHistory() -> [JRPGAction] {
-    return actionHistory
-  }
-
-  /// Clears the recorded action history.
-  public func clearActionHistory() {
-    actionHistory.removeAll()
-  }
-
-  /// Returns the current battle state without mutating it.
-  public func getStateSnapshot() -> JRPGBattleState {
-    return state
-  }
-
-  private func applyBattleAction(_ action: BattleAction) {
-    let reduction = BattleReducer().reduce(state: state.engineState, action: action)
-    state = state.withEngineState(reduction.state)
-
-    Task {
-      await executeCommands(reduction.commands)
-      await executeEffects(reduction.effects)
-    }
-  }
-}
-
-// MARK: - Work Execution
-
-extension JRPGBattleStore {
-
-  /// Executes the supplied commands in priority order.
-  ///
-  /// - Parameter commands: The pending commands to run.
-  private func executeCommands(_ commands: [any Command]) async {
-    let sortedCommands = commands.sorted { $0.priority > $1.priority }
-
-    for command in sortedCommands {
-      await executeCommand(command)
-    }
-  }
-
-  /// Executes a single command.
-  ///
-  /// - Parameter command: The command to run.
-  private func executeCommand(_ command: any Command) async {
-    if let handler = commandHandler {
-      await handler(command)
-    } else {
-      print("🎬 Command executed: \(command.id) (priority: \(command.priority))")
-    }
-  }
-
-  /// Starts effects that can produce follow-up JRPG actions.
-  ///
-  /// - Parameter effects: The effects to run.
-  private func executeEffects(_ effects: [Effect<JRPGAction>]) async {
-    for effect in effects {
-      Task {
-        if let action = await effect.run() {
-          await MainActor.run {
-            self.dispatch(action)
-          }
-        }
-      }
-    }
-  }
-
-  /// Starts effects that can produce follow-up engine actions.
-  ///
-  /// - Parameter effects: The effects to run.
-  private func executeEffects(_ effects: [Effect<BattleAction>]) async {
-    for effect in effects {
-      Task {
-        if let action = await effect.run() {
-          await MainActor.run {
-            self.applyBattleAction(action)
-          }
-        }
-      }
-    }
+    resetState(newState ?? JRPGBattleState())
   }
 }
 
@@ -188,19 +59,19 @@ extension JRPGBattleStore {
   ///
   /// - Parameter combatantID: The acting combatant, or `nil` to clear it.
   public func setCurrentActor(_ combatantID: CombatantID?) {
-    applyBattleAction(.updateCurrentActor(combatantID))
+    dispatch(.engine(.updateCurrentActor(combatantID)))
   }
 
   /// Advances the battle to the next turn.
   public func advanceTurn() {
-    applyBattleAction(.incrementTurn)
+    dispatch(.engine(.incrementTurn))
   }
 
   /// Moves the battle to a specific phase.
   ///
   /// - Parameter phase: The phase to enter.
   public func advanceToPhase(_ phase: BattlePhase) {
-    applyBattleAction(.transitionPhase(phase))
+    dispatch(.engine(.transitionPhase(phase)))
   }
 }
 
@@ -282,7 +153,7 @@ extension JRPGBattleStore {
   /// Prints the recorded action history to the console.
   public func logActionHistory() {
     print("=== Action History ===")
-    for (index, action) in actionHistory.enumerated() {
+    for (index, action) in getActionHistory().enumerated() {
       print("\(index + 1). \(action)")
     }
     print("=====================")

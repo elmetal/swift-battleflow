@@ -60,4 +60,15 @@ public struct Effect<Action: Sendable>: Sendable {
   public func run() async -> Action? {
     await operation()
   }
+
+  /// Returns an effect that transforms the produced action.
+  ///
+  /// Use this to embed a child reducer's effects into a parent action type.
+  ///
+  /// - Parameter transform: A closure that converts the produced action.
+  public func map<NewAction: Sendable>(
+    _ transform: @escaping @Sendable (Action) -> NewAction
+  ) -> Effect<NewAction> {
+    Effect<NewAction> { await self.run().map(transform) }
+  }
 }
