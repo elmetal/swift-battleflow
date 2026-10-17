@@ -126,24 +126,6 @@ public enum SelectedAction: Sendable, Equatable {
   case escape
 }
 
-extension SelectedAction {
-  /// Provides the engine-level selection identity for this JRPG action.
-  public var battleSelection: BattleSelection {
-    switch self {
-    case .attack:
-      return BattleSelection(id: "jrpg.attack")
-    case .skill(let id, _):
-      return BattleSelection(id: "jrpg.skill.\(id.value)")
-    case .item(let id, _):
-      return BattleSelection(id: "jrpg.item.\(id.value)")
-    case .defend:
-      return BattleSelection(id: "jrpg.defend")
-    case .escape:
-      return BattleSelection(id: "jrpg.escape")
-    }
-  }
-}
-
 /// The relative priority assigned to a JRPG action.
 public enum ActionPriority: Int, CaseIterable, Sendable {
   case lowest = 0
