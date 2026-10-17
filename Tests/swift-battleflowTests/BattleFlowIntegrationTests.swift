@@ -9,8 +9,8 @@ import Testing
 func testFullBattleFlow() async throws {
   let store = JRPGBattleStore()
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, attack: 25, isPlayer: true)
-  let goblin = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 50, attack: 15, isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, attack: 25, isPlayer: true)
+  let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 50, attack: 15, isPlayer: false)
 
   // 戦闘開始
   store.startBattle(players: [hero], enemies: [goblin])
@@ -19,19 +19,19 @@ func testFullBattleFlow() async throws {
 
   // ヒーローがゴブリンを攻撃（25 - 15 / 2 = 18 ダメージ）
   store.performAttack(attacker: hero.id, target: goblin.id)
-  let damagedGoblin = store.getCombatant(goblin.id)!
+  let damagedGoblin = store.combatant(for: goblin.id)!
   #expect(damagedGoblin.stats.hp == 32)  // 50 - 18 = 32
 
   // さらに攻撃してゴブリンを倒す
   store.performAttack(attacker: hero.id, target: goblin.id)
   store.performAttack(attacker: hero.id, target: goblin.id)
-  let defeatedGoblin = store.getCombatant(goblin.id)!
+  let defeatedGoblin = store.combatant(for: goblin.id)!
   #expect(defeatedGoblin.stats.hp == 0)  // 32 - 18 - 18 = 0 (min)
   #expect(defeatedGoblin.stats.isDefeated == true)
 
   // 倒れたゴブリンへの攻撃は無視される
   store.performAttack(attacker: hero.id, target: goblin.id)
-  #expect(store.getCombatant(goblin.id) == defeatedGoblin)
+  #expect(store.combatant(for: goblin.id) == defeatedGoblin)
 
   // 戦闘終了
   store.endBattle(with: .victory)
@@ -42,10 +42,10 @@ func testFullBattleFlow() async throws {
 @Test("BattleFlow factory methods")
 @MainActor
 func testBattleFlowFactory() async throws {
-  let store = JRPGBattleFlow.createStore()
+  let store = JRPGBattleFlow.makeStore()
   #expect(store.currentPhase == .preparation)
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Test Hero", hp: 150, mp: 75, attack: 30)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Test Hero", hp: 150, mp: 75, attack: 30)
   #expect(hero.name == "Test Hero")
   #expect(hero.id.value == "test_hero")
   #expect(hero.stats.hp == 150)

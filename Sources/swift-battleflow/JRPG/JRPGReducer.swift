@@ -57,11 +57,11 @@ public struct JRPGReducer: Reducer {
       }
       return reduceEscape(state: state, escaper: escaper)
 
-    case .aiDecideAction(let combatantID):
+    case .requestAIDecision(let combatantID):
       guard canAct(combatantID, in: state) else {
         return Reduction(state: state)
       }
-      return reduceAIDecideAction(state: state, combatantID: combatantID)
+      return reduceRequestAIDecision(state: state, combatantID: combatantID)
     }
   }
 }
@@ -124,8 +124,8 @@ extension JRPGReducer {
     let newState = JRPGBattleState(
       phase: .turnSelection,
       combatants: combatants,
-      playerCombatants: playerIDs,
-      enemyCombatants: enemyIDs,
+      playerIDs: playerIDs,
+      enemyIDs: enemyIDs,
       turnCount: 1,
       currentActor: nil,
       pendingCommands: []
@@ -245,7 +245,7 @@ extension JRPGReducer {
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Player escape ends the encounter immediately.
-    if state.playerCombatants.contains(escaper) {
+    if state.playerIDs.contains(escaper) {
       let newState = state.withPhase(.escape)
       let commands: [any Command] = [
         BaseCommand(id: "escape_success", priority: 2)
@@ -259,7 +259,7 @@ extension JRPGReducer {
 
   // MARK: - AI Coordination
 
-  fileprivate func reduceAIDecideAction(
+  fileprivate func reduceRequestAIDecision(
     state: JRPGBattleState,
     combatantID: CombatantID
   ) -> Reduction<JRPGBattleState, JRPGAction> {

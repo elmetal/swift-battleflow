@@ -8,8 +8,8 @@ import Testing
 func testReducerStartBattle() async throws {
   let initialState = JRPGBattleState()
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
 
   let action = JRPGAction.startBattle(players: [hero], enemies: [enemy])
   let reduction = JRPGReducer().reduce(state: initialState, action: action)
@@ -18,8 +18,8 @@ func testReducerStartBattle() async throws {
   #expect(newState.phase == .turnSelection)
   #expect(newState.turnCount == 1)
   #expect(newState.combatants.count == 2)
-  #expect(newState.playerCombatants.count == 1)
-  #expect(newState.enemyCombatants.count == 1)
+  #expect(newState.playerIDs.count == 1)
+  #expect(newState.enemyIDs.count == 1)
   #expect(reduction.commands.isEmpty == false)
 }
 
@@ -44,13 +44,13 @@ func testReducerAdvanceTurnAndPhase() async throws {
 
 @Test("Reducer handles attack action")
 func testReducerAttack() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, isPlayer: true)
+  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
   let state = JRPGBattleState(
     combatants: [hero.id: hero, enemy.id: enemy],
-    playerCombatants: [hero.id],
-    enemyCombatants: [enemy.id]
+    playerIDs: [hero.id],
+    enemyIDs: [enemy.id]
   )
 
   let action = JRPGAction.attack(attacker: hero.id, target: enemy.id)
@@ -65,12 +65,12 @@ func testReducerAttack() async throws {
 
 @Test("Reducer handles player escape")
 func testReducerEscape() async throws {
-  let hero = JRPGBattleFlow.createCharacter(name: "Mage", isPlayer: true)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Mage", isPlayer: true)
   let state = JRPGBattleState(
     phase: .actionExecution,
     combatants: [hero.id: hero],
-    playerCombatants: [hero.id],
-    enemyCombatants: []
+    playerIDs: [hero.id],
+    enemyIDs: []
   )
 
   let escapeReduction = JRPGReducer().reduce(
@@ -94,12 +94,12 @@ func testReducerBattleActionDirectly() async throws {
 func testJRPGReducerActionDirectly() async throws {
   let reducer = JRPGReducer()
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = JRPGBattleFlow.createCharacter(name: "Slime", hp: 40, isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, isPlayer: true)
+  let enemy = JRPGBattleFlow.makeCharacter(name: "Slime", hp: 40, isPlayer: false)
   let state = JRPGBattleState(
     combatants: [hero.id: hero, enemy.id: enemy],
-    playerCombatants: [hero.id],
-    enemyCombatants: [enemy.id]
+    playerIDs: [hero.id],
+    enemyIDs: [enemy.id]
   )
 
   let reduction = reducer.reduce(

@@ -126,7 +126,7 @@ public struct BattleState: Sendable, Equatable {
   }
 
   /// Returns a new state with additional pending commands appended.
-  public func withCommands(_ commands: [any Command]) -> BattleState {
+  public func appendingCommands(_ commands: [any Command]) -> BattleState {
     BattleState(
       phase: phase,
       participants: participants,
@@ -138,7 +138,7 @@ public struct BattleState: Sendable, Equatable {
   }
 
   /// Returns a new state with all pending commands removed.
-  public func withClearedCommands() -> BattleState {
+  public func removingAllCommands() -> BattleState {
     BattleState(
       phase: phase,
       participants: participants,

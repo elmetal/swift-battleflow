@@ -18,7 +18,7 @@ public struct BattleFlow {
   /// - Parameter initialState: The starting engine state.
   /// - Returns: A fully initialized ``BattleStore`` ready to process battle actions.
   @MainActor
-  public static func createStore(initialState: BattleState = BattleState()) -> BattleStore {
+  public static func makeStore(initialState: BattleState = BattleState()) -> BattleStore {
     return BattleStore(initialState: initialState)
   }
 }
@@ -33,7 +33,7 @@ public struct JRPGBattleFlow {
   /// - Parameter initialState: The starting JRPG state.
   /// - Returns: A fully initialized ``JRPGBattleStore`` ready to process JRPG actions.
   @MainActor
-  public static func createStore(
+  public static func makeStore(
     initialState: JRPGBattleState = JRPGBattleState()
   ) -> JRPGBattleStore {
     return JRPGBattleStore(initialState: initialState)
@@ -56,7 +56,7 @@ public struct JRPGBattleFlow {
   ///     controlled by the player.
   /// - Returns: A configured ``Combatant`` instance that can be inserted into
   ///   a JRPG battle state.
-  public static func createCharacter(
+  public static func makeCharacter(
     name: String,
     hp: Int = 100,
     maxHP: Int? = nil,

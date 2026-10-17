@@ -30,11 +30,11 @@ func testBattleStateParticipants() async throws {
 
 @Test("JRPGBattleState derived collections and updates")
 func testJRPGBattleStateDerivedCollections() async throws {
-  let alivePlayer = JRPGBattleFlow.createCharacter(name: "Hero", hp: 80, isPlayer: true)
-  let defeatedPlayer = JRPGBattleFlow.createCharacter(
+  let alivePlayer = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 80, isPlayer: true)
+  let defeatedPlayer = JRPGBattleFlow.makeCharacter(
     name: "Knight", hp: 0, maxHP: 80, isPlayer: true)
-  let aliveEnemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 40, isPlayer: false)
-  let defeatedEnemy = JRPGBattleFlow.createCharacter(
+  let aliveEnemy = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 40, isPlayer: false)
+  let defeatedEnemy = JRPGBattleFlow.makeCharacter(
     name: "Orc", hp: 0, maxHP: 120, isPlayer: false)
 
   let state = JRPGBattleState(
@@ -45,8 +45,8 @@ func testJRPGBattleStateDerivedCollections() async throws {
       aliveEnemy.id: aliveEnemy,
       defeatedEnemy.id: defeatedEnemy,
     ],
-    playerCombatants: [alivePlayer.id, defeatedPlayer.id],
-    enemyCombatants: [aliveEnemy.id, defeatedEnemy.id]
+    playerIDs: [alivePlayer.id, defeatedPlayer.id],
+    enemyIDs: [aliveEnemy.id, defeatedEnemy.id]
   )
 
   #expect(Set(state.alivePlayers.map(\.id)) == Set([alivePlayer.id]))

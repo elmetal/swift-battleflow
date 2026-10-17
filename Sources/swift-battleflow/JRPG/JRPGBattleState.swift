@@ -8,26 +8,26 @@ extension BattleGroupID {
 public struct JRPGBattleState: Sendable, Equatable {
   public let engineState: BattleState
   public let combatants: [CombatantID: Combatant]
-  public let playerCombatants: Set<CombatantID>
-  public let enemyCombatants: Set<CombatantID>
+  public let playerIDs: Set<CombatantID>
+  public let enemyIDs: Set<CombatantID>
 
   public init(
     engineState: BattleState = BattleState(),
     combatants: [CombatantID: Combatant] = [:],
-    playerCombatants: Set<CombatantID> = [],
-    enemyCombatants: Set<CombatantID> = []
+    playerIDs: Set<CombatantID> = [],
+    enemyIDs: Set<CombatantID> = []
   ) {
     self.engineState = engineState
     self.combatants = combatants
-    self.playerCombatants = playerCombatants
-    self.enemyCombatants = enemyCombatants
+    self.playerIDs = playerIDs
+    self.enemyIDs = enemyIDs
   }
 
   public init(
     phase: BattlePhase = .preparation,
     combatants: [CombatantID: Combatant] = [:],
-    playerCombatants: Set<CombatantID> = [],
-    enemyCombatants: Set<CombatantID> = [],
+    playerIDs: Set<CombatantID> = [],
+    enemyIDs: Set<CombatantID> = [],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
     pendingCommands: [any Command] = []
@@ -41,8 +41,8 @@ public struct JRPGBattleState: Sendable, Equatable {
       phase: phase,
       participants: participants,
       groups: [
-        .players: playerCombatants,
-        .enemies: enemyCombatants,
+        .players: playerIDs,
+        .enemies: enemyIDs,
       ],
       turnCount: turnCount,
       currentActor: currentActor,
@@ -52,8 +52,8 @@ public struct JRPGBattleState: Sendable, Equatable {
     self.init(
       engineState: engineState,
       combatants: combatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants
+      playerIDs: playerIDs,
+      enemyIDs: enemyIDs
     )
   }
 
@@ -79,14 +79,14 @@ public struct JRPGBattleState: Sendable, Equatable {
 
   /// Returns the player-controlled combatants that are still active.
   public var alivePlayers: [Combatant] {
-    playerCombatants.compactMap { id in
+    playerIDs.compactMap { id in
       combatants[id]?.stats.isDefeated == false ? combatants[id] : nil
     }
   }
 
   /// Returns the enemy combatants that are still active.
   public var aliveEnemies: [Combatant] {
-    enemyCombatants.compactMap { id in
+    enemyIDs.compactMap { id in
       combatants[id]?.stats.isDefeated == false ? combatants[id] : nil
     }
   }
@@ -95,8 +95,8 @@ public struct JRPGBattleState: Sendable, Equatable {
     JRPGBattleState(
       engineState: newEngineState,
       combatants: combatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants
+      playerIDs: playerIDs,
+      enemyIDs: enemyIDs
     )
   }
 
@@ -106,11 +106,11 @@ public struct JRPGBattleState: Sendable, Equatable {
     newCombatants[combatant.id] = combatant
 
     var newEngineState = engineState.withParticipant(BattleParticipant(id: combatant.id))
-    if playerCombatants.contains(combatant.id) {
+    if playerIDs.contains(combatant.id) {
       newEngineState = newEngineState.withParticipant(
         BattleParticipant(id: combatant.id), in: .players)
     }
-    if enemyCombatants.contains(combatant.id) {
+    if enemyIDs.contains(combatant.id) {
       newEngineState = newEngineState.withParticipant(
         BattleParticipant(id: combatant.id), in: .enemies)
     }
@@ -118,8 +118,8 @@ public struct JRPGBattleState: Sendable, Equatable {
     return JRPGBattleState(
       engineState: newEngineState,
       combatants: newCombatants,
-      playerCombatants: playerCombatants,
-      enemyCombatants: enemyCombatants
+      playerIDs: playerIDs,
+      enemyIDs: enemyIDs
     )
   }
 
@@ -129,17 +129,17 @@ public struct JRPGBattleState: Sendable, Equatable {
   }
 
   /// Returns a new state with additional pending commands appended.
-  public func withCommands(_ commands: [any Command]) -> JRPGBattleState {
-    withEngineState(engineState.withCommands(commands))
+  public func appendingCommands(_ commands: [any Command]) -> JRPGBattleState {
+    withEngineState(engineState.appendingCommands(commands))
   }
 
   /// Returns a new state with all pending commands removed.
-  public func withClearedCommands() -> JRPGBattleState {
-    withEngineState(engineState.withClearedCommands())
+  public func removingAllCommands() -> JRPGBattleState {
+    withEngineState(engineState.removingAllCommands())
   }
 
   public static func == (lhs: JRPGBattleState, rhs: JRPGBattleState) -> Bool {
     lhs.engineState == rhs.engineState && lhs.combatants == rhs.combatants
-      && lhs.playerCombatants == rhs.playerCombatants && lhs.enemyCombatants == rhs.enemyCombatants
+      && lhs.playerIDs == rhs.playerIDs && lhs.enemyIDs == rhs.enemyIDs
   }
 }

@@ -28,7 +28,7 @@ public enum JRPGAction: Sendable, Equatable {
   case escape(escaper: CombatantID)
 
   /// Requests an AI-controlled combatant to select an action.
-  case aiDecideAction(for: CombatantID)
+  case requestAIDecision(for: CombatantID)
 }
 
 extension JRPGAction {

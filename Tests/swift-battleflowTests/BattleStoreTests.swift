@@ -33,8 +33,8 @@ func testBattleStoreEngineDispatch() async throws {
 func testJRPGBattleStoreStartBattle() async throws {
   let store = JRPGBattleStore()
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [enemy])
 
@@ -43,12 +43,12 @@ func testJRPGBattleStoreStartBattle() async throws {
   #expect(store.alivePlayers.count == 1)
   #expect(store.aliveEnemies.count == 1)
 
-  let storedHero = store.getCombatant(hero.id)
+  let storedHero = store.combatant(for: hero.id)
   #expect(storedHero != nil)
   #expect(storedHero?.name == "Hero")
 
-  #expect(store.isPlayerCombatant(hero.id) == true)
-  #expect(store.isEnemyCombatant(enemy.id) == true)
+  #expect(store.isPlayer(hero.id) == true)
+  #expect(store.isEnemy(enemy.id) == true)
 }
 
 @Test("JRPGBattleStore attack functionality")
@@ -56,13 +56,13 @@ func testJRPGBattleStoreStartBattle() async throws {
 func testJRPGBattleStoreAttack() async throws {
   let store = JRPGBattleStore()
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, isPlayer: true)
+  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [enemy])
   store.performAttack(attacker: hero.id, target: enemy.id)
 
-  let updatedEnemy = store.getCombatant(enemy.id)!
+  let updatedEnemy = store.combatant(for: enemy.id)!
   #expect(updatedEnemy.stats.hp == 67)  // 80 - (20 - 15 / 2) = 67
 }
 
@@ -72,11 +72,11 @@ func testJRPGBattleStoreInjectedRules() async throws {
   let store = JRPGBattleStore(
     reducer: JRPGReducer(rules: JRPGRules(physicalDamage: { _, _ in 40 })))
 
-  let hero = JRPGBattleFlow.createCharacter(name: "Hero", isPlayer: true)
-  let enemy = JRPGBattleFlow.createCharacter(name: "Goblin", hp: 80, isPlayer: false)
+  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
+  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 80, isPlayer: false)
 
   store.startBattle(players: [hero], enemies: [enemy])
   store.performAttack(attacker: hero.id, target: enemy.id)
 
-  #expect(store.getCombatant(enemy.id)?.stats.hp == 40)
+  #expect(store.combatant(for: enemy.id)?.stats.hp == 40)
 }

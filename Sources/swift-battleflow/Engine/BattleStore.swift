@@ -19,7 +19,7 @@ public final class Store<R: Reducer> {
   private let reducer: R
 
   /// A debug-friendly log of dispatched actions.
-  private var actionHistory: [R.Action] = []
+  public private(set) var actionHistory: [R.Action] = []
 
   /// Creates a store using the provided initial state and reducer.
   ///
@@ -55,34 +55,17 @@ public final class Store<R: Reducer> {
     }
   }
 
-  /// Dispatches an action from asynchronous contexts.
-  ///
-  /// - Parameter action: The action to process.
-  public func dispatchAsync(_ action: R.Action) async {
-    dispatch(action)
-  }
-
-  /// Resets the state to the supplied value or a fresh battle.
+  /// Replaces the state and clears the action history.
   ///
   /// - Parameter newState: The replacement state.
-  public func resetState(_ newState: R.State) {
+  public func reset(to newState: R.State) {
     state = newState
     actionHistory.removeAll()
-  }
-
-  /// Returns a snapshot of the action history.
-  public func getActionHistory() -> [R.Action] {
-    return actionHistory
   }
 
   /// Clears the recorded action history.
   public func clearActionHistory() {
     actionHistory.removeAll()
-  }
-
-  /// Returns the current state without mutating it.
-  public func getStateSnapshot() -> R.State {
-    return state
   }
 }
 
@@ -98,12 +81,9 @@ extension BattleStore {
     self.init(initialState: initialState, reducer: BattleReducer())
   }
 
-  /// Resets the state to the supplied value or a fresh battle.
-  ///
-  /// - Parameter newState: The replacement state. When omitted, a new
-  ///   ``BattleState`` instance is used.
-  public func resetState(_ newState: BattleState? = nil) {
-    resetState(newState ?? BattleState())
+  /// Resets the store to a fresh battle and clears the action history.
+  public func reset() {
+    reset(to: BattleState())
   }
 }
 
@@ -168,7 +148,7 @@ extension BattleStore {
   /// Moves the battle to a specific phase.
   ///
   /// - Parameter phase: The phase to enter.
-  public func advanceToPhase(_ phase: BattlePhase) {
+  public func advance(to phase: BattlePhase) {
     dispatch(.transitionPhase(phase))
   }
 }
@@ -201,7 +181,7 @@ extension BattleStore {
   ///
   /// - Parameter id: The identifier to search for.
   /// - Returns: The matching participant, or `nil` when not found.
-  public func getParticipant(_ id: CombatantID) -> BattleParticipant? {
+  public func participant(for id: CombatantID) -> BattleParticipant? {
     return state.participants[id]
   }
 

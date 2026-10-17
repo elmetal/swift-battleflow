@@ -17,12 +17,9 @@ extension JRPGBattleStore {
     self.init(initialState: JRPGBattleState(), reducer: reducer)
   }
 
-  /// Resets the state to the supplied value or a fresh battle.
-  ///
-  /// - Parameter newState: The replacement state. When omitted, a new
-  ///   ``JRPGBattleState`` instance is used.
-  public func resetState(_ newState: JRPGBattleState? = nil) {
-    resetState(newState ?? JRPGBattleState())
+  /// Resets the store to a fresh battle and clears the action history.
+  public func reset() {
+    reset(to: JRPGBattleState())
   }
 }
 
@@ -70,7 +67,7 @@ extension JRPGBattleStore {
   /// Moves the battle to a specific phase.
   ///
   /// - Parameter phase: The phase to enter.
-  public func advanceToPhase(_ phase: BattlePhase) {
+  public func advance(to phase: BattlePhase) {
     dispatch(.engine(.transitionPhase(phase)))
   }
 }
@@ -113,7 +110,7 @@ extension JRPGBattleStore {
   ///
   /// - Parameter id: The identifier to search for.
   /// - Returns: The matching combatant, or `nil` when not found.
-  public func getCombatant(_ id: CombatantID) -> Combatant? {
+  public func combatant(for id: CombatantID) -> Combatant? {
     return state.combatants[id]
   }
 
@@ -121,16 +118,16 @@ extension JRPGBattleStore {
   ///
   /// - Parameter id: The identifier to inspect.
   /// - Returns: ``true`` when the combatant is controlled by the player.
-  public func isPlayerCombatant(_ id: CombatantID) -> Bool {
-    return state.playerCombatants.contains(id)
+  public func isPlayer(_ id: CombatantID) -> Bool {
+    return state.playerIDs.contains(id)
   }
 
   /// Determines whether the identifier references an enemy combatant.
   ///
   /// - Parameter id: The identifier to inspect.
   /// - Returns: ``true`` when the combatant is an enemy.
-  public func isEnemyCombatant(_ id: CombatantID) -> Bool {
-    return state.enemyCombatants.contains(id)
+  public func isEnemy(_ id: CombatantID) -> Bool {
+    return state.enemyIDs.contains(id)
   }
 }
 
@@ -144,8 +141,8 @@ extension JRPGBattleStore {
     print("Phase: \(state.phase)")
     print("Turn: \(state.turnCount)")
     print("Current Actor: \(state.currentActor?.value ?? "none")")
-    print("Players: \(state.alivePlayers.count)/\(state.playerCombatants.count) alive")
-    print("Enemies: \(state.aliveEnemies.count)/\(state.enemyCombatants.count) alive")
+    print("Players: \(state.alivePlayers.count)/\(state.playerIDs.count) alive")
+    print("Enemies: \(state.aliveEnemies.count)/\(state.enemyIDs.count) alive")
     print("Pending Commands: \(state.pendingCommands.count)")
     print("=========================")
   }
@@ -153,7 +150,7 @@ extension JRPGBattleStore {
   /// Prints the recorded action history to the console.
   public func logActionHistory() {
     print("=== Action History ===")
-    for (index, action) in getActionHistory().enumerated() {
+    for (index, action) in actionHistory.enumerated() {
       print("\(index + 1). \(action)")
     }
     print("=====================")
