@@ -149,8 +149,8 @@ extension BattleReducer {
     commandID: String
   ) -> Reduction<BattleState, BattleAction> {
 
-    // Executing a command does not change engine state.
-    return Reduction(state: state)
+    let newState = state.removingFirstCommand(withID: commandID)
+    return Reduction(state: newState)
   }
 
   private func reduceRemoveAllCommands(state: BattleState) -> Reduction<BattleState, BattleAction> {
