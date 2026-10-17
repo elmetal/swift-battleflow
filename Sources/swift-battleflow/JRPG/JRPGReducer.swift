@@ -3,9 +3,17 @@ public struct JRPGReducer: Reducer {
   public typealias State = JRPGBattleState
   public typealias Action = JRPGAction
 
-  public init() {}
+  /// The rules used to derive action outcomes.
+  public let rules: JRPGRules
+
+  public init(rules: JRPGRules = .standard) {
+    self.rules = rules
+  }
 
   /// Reduces actions that belong to the default JRPG rule set.
+  ///
+  /// Combatant intents are ignored unless the battle is ongoing and every
+  /// referenced combatant exists and is not defeated.
   public func reduce(state: JRPGBattleState, action: JRPGAction) -> Reduction<
     JRPGBattleState, JRPGAction
   > {
@@ -16,40 +24,57 @@ public struct JRPGReducer: Reducer {
     case .endBattle(let result):
       return reduceEndBattle(state: state, result: result)
 
-    case .attack(let attacker, let target, let damage):
-      return reduceAttack(state: state, attacker: attacker, target: target, damage: damage)
+    case .attack(let attacker, let target):
+      guard canAct(attacker, in: state), canBeTargeted(target, in: state) else {
+        return Reduction(state: state)
+      }
+      return reduceAttack(state: state, attacker: attacker, target: target)
 
-    case .useSkill(let user, let skillID, let targets):
-      return reduceUseSkill(state: state, user: user, skillID: skillID, targets: targets)
+    case .useSkill(let user, let skill, let targets):
+      guard canAct(user, in: state), targets.allSatisfy({ canBeTargeted($0, in: state) }) else {
+        return Reduction(state: state)
+      }
+      return reduceUseSkill(state: state, user: user, skill: skill, targets: targets)
 
-    case .useItem(let user, let itemID, let target):
-      return reduceUseItem(state: state, user: user, itemID: itemID, target: target)
+    case .useItem(let user, let item, let target):
+      guard canAct(user, in: state), target.map({ canBeTargeted($0, in: state) }) ?? true else {
+        return Reduction(state: state)
+      }
+      return reduceUseItem(state: state, user: user, item: item, target: target)
 
     case .defend(let defender):
+      guard canAct(defender, in: state) else {
+        return Reduction(state: state)
+      }
       return reduceDefend(state: state, defender: defender)
 
     case .escape(let escaper):
+      guard canAct(escaper, in: state) else {
+        return Reduction(state: state)
+      }
       return reduceEscape(state: state, escaper: escaper)
 
-    case .changeHP(let target, let amount):
-      return reduceChangeHP(state: state, target: target, amount: amount)
-
-    case .changeMP(let target, let amount):
-      return reduceChangeMP(state: state, target: target, amount: amount)
-
-    case .applyStatusEffect(let target, let effect, let duration):
-      return reduceApplyStatusEffect(
-        state: state, target: target, effect: effect, duration: duration)
-
-    case .removeStatusEffect(let target, let effect):
-      return reduceRemoveStatusEffect(state: state, target: target, effect: effect)
-
     case .aiDecideAction(let combatantID):
+      guard canAct(combatantID, in: state) else {
+        return Reduction(state: state)
+      }
       return reduceAIDecideAction(state: state, combatantID: combatantID)
-
-    case .aiExecuteAction(let combatantID, let action):
-      return reduceAIExecuteAction(state: state, combatantID: combatantID, action: action)
     }
+  }
+}
+
+extension JRPGReducer {
+
+  // MARK: - Preconditions
+
+  /// Indicates whether the combatant may take an action in the given state.
+  fileprivate func canAct(_ id: CombatantID, in state: JRPGBattleState) -> Bool {
+    !state.isBattleEnded && canBeTargeted(id, in: state)
+  }
+
+  /// Indicates whether the combatant exists and is not defeated.
+  fileprivate func canBeTargeted(_ id: CombatantID, in state: JRPGBattleState) -> Bool {
+    state.combatants[id]?.stats.isDefeated == false
   }
 }
 
@@ -125,13 +150,17 @@ extension JRPGReducer {
   fileprivate func reduceAttack(
     state: JRPGBattleState,
     attacker: CombatantID,
-    target: CombatantID,
-    damage: Int
+    target: CombatantID
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
-    guard let targetCombatant = state.combatants[target] else {
-      return Reduction(state: state)
+    guard let attackerCombatant = state.combatants[attacker],
+      let targetCombatant = state.combatants[target]
+    else {
+      preconditionFailure("Attack preconditions must be checked before reducing.")
     }
+
+    let damage = rules.physicalDamage(attackerCombatant.stats, targetCombatant.stats)
+    precondition(damage >= 0, "JRPGRules.physicalDamage must not return a negative value.")
 
     let newHP = targetCombatant.stats.hp - damage
     let updatedStats = targetCombatant.stats.withHP(newHP)
@@ -151,14 +180,14 @@ extension JRPGReducer {
   fileprivate func reduceUseSkill(
     state: JRPGBattleState,
     user: CombatantID,
-    skillID: String,
+    skill: SkillID,
     targets: [CombatantID]
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Placeholder implementation; extend with concrete skill logic.
     let commands: [any Command] = [
-      BaseCommand(id: "skill_animation_\(skillID)", priority: 3),
-      BaseCommand(id: "skill_sound_\(skillID)", priority: 1),
+      BaseCommand(id: "skill_animation_\(skill.value)", priority: 3),
+      BaseCommand(id: "skill_sound_\(skill.value)", priority: 1),
     ]
 
     return Reduction(state: state, commands: commands)
@@ -167,13 +196,13 @@ extension JRPGReducer {
   fileprivate func reduceUseItem(
     state: JRPGBattleState,
     user: CombatantID,
-    itemID: String,
+    item: ItemID,
     target: CombatantID?
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
     // Placeholder implementation; extend with concrete item logic.
     let commands: [any Command] = [
-      BaseCommand(id: "item_use_\(itemID)", priority: 2)
+      BaseCommand(id: "item_use_\(item.value)", priority: 2)
     ]
 
     return Reduction(state: state, commands: commands)
@@ -209,84 +238,6 @@ extension JRPGReducer {
     return Reduction(state: state)
   }
 
-  // MARK: - Status Adjustments
-
-  fileprivate func reduceChangeHP(
-    state: JRPGBattleState,
-    target: CombatantID,
-    amount: Int
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
-
-    guard let combatant = state.combatants[target] else {
-      return Reduction(state: state)
-    }
-
-    let newHP = combatant.stats.hp + amount
-    let updatedStats = combatant.stats.withHP(newHP)
-    let updatedCombatant = combatant.withStats(updatedStats)
-
-    let newState = state.withCombatant(updatedCombatant)
-
-    let effectType = amount > 0 ? "heal" : "damage"
-    let commands: [any Command] = [
-      BaseCommand(id: "\(effectType)_effect_\(target.value)_\(abs(amount))", priority: 2)
-    ]
-
-    return Reduction(state: newState, commands: commands)
-  }
-
-  fileprivate func reduceChangeMP(
-    state: JRPGBattleState,
-    target: CombatantID,
-    amount: Int
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
-
-    guard let combatant = state.combatants[target] else {
-      return Reduction(state: state)
-    }
-
-    let newMP = combatant.stats.mp + amount
-    let updatedStats = combatant.stats.withMP(newMP)
-    let updatedCombatant = combatant.withStats(updatedStats)
-
-    let newState = state.withCombatant(updatedCombatant)
-
-    let commands: [any Command] = [
-      BaseCommand(id: "mp_change_\(target.value)_\(amount)", priority: 1)
-    ]
-
-    return Reduction(state: newState, commands: commands)
-  }
-
-  fileprivate func reduceApplyStatusEffect(
-    state: JRPGBattleState,
-    target: CombatantID,
-    effect: String,
-    duration: Int
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
-
-    // Status ailments will be implemented in a future phase.
-    let commands: [any Command] = [
-      BaseCommand(id: "status_effect_apply_\(effect)", priority: 2)
-    ]
-
-    return Reduction(state: state, commands: commands)
-  }
-
-  fileprivate func reduceRemoveStatusEffect(
-    state: JRPGBattleState,
-    target: CombatantID,
-    effect: String
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
-
-    // Status ailments will be implemented in a future phase.
-    let commands: [any Command] = [
-      BaseCommand(id: "status_effect_remove_\(effect)", priority: 1)
-    ]
-
-    return Reduction(state: state, commands: commands)
-  }
-
   // MARK: - AI Coordination
 
   fileprivate func reduceAIDecideAction(
@@ -300,15 +251,5 @@ extension JRPGReducer {
     ]
 
     return Reduction(state: state, commands: commands)
-  }
-
-  fileprivate func reduceAIExecuteAction(
-    state: JRPGBattleState,
-    combatantID: CombatantID,
-    action: SelectedAction
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
-
-    // AI execution will arrive in a future phase.
-    return Reduction(state: state)
   }
 }

@@ -39,3 +39,11 @@ func testStatsHPChange() async throws {
   let overhealedStats = stats.withHP(150)
   #expect(overhealedStats.hp == 100)
 }
+
+@Test("Stats MP changes are clamped")
+func testStatsMPChange() async throws {
+  let stats = Stats(hp: 100, maxHP: 100, mp: 30, maxMP: 40, attack: 20, defense: 15, speed: 10)
+
+  #expect(stats.withMP(60).mp == 40)
+  #expect(stats.withMP(-10).mp == 0)
+}

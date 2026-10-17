@@ -6,11 +6,48 @@ public enum BattleResult: Sendable, Equatable {
   case draw  // Neither side prevails.
 }
 
+/// Identifies a skill in the default JRPG rule set.
+public struct SkillID: Hashable, Sendable {
+  public let value: String
+
+  public init(_ value: String) {
+    precondition(!value.isEmpty, "SkillID value must not be empty.")
+    self.value = value
+  }
+}
+
+/// Identifies an item in the default JRPG rule set.
+public struct ItemID: Hashable, Sendable {
+  public let value: String
+
+  public init(_ value: String) {
+    precondition(!value.isEmpty, "ItemID value must not be empty.")
+    self.value = value
+  }
+}
+
+/// Calculates outcomes for the default JRPG rule set.
+public struct JRPGRules: Sendable {
+  /// Returns the physical damage dealt by an attacker to a defender.
+  ///
+  /// The result must not be negative.
+  public let physicalDamage: @Sendable (_ attacker: Stats, _ defender: Stats) -> Int
+
+  public init(physicalDamage: @escaping @Sendable (_ attacker: Stats, _ defender: Stats) -> Int) {
+    self.physicalDamage = physicalDamage
+  }
+
+  /// The default rules: attack minus half of defense, with a minimum of one.
+  public static let standard = JRPGRules { attacker, defender in
+    max(1, attacker.attack - defender.defense / 2)
+  }
+}
+
 /// The action that a combatant ultimately chooses to perform.
 public enum SelectedAction: Sendable, Equatable {
   case attack(target: CombatantID)
-  case skill(id: String, targets: [CombatantID])
-  case item(id: String, target: CombatantID?)
+  case skill(id: SkillID, targets: [CombatantID])
+  case item(id: ItemID, target: CombatantID?)
   case defend
   case escape
 }
@@ -22,9 +59,9 @@ extension SelectedAction {
     case .attack:
       return BattleSelection(id: "jrpg.attack")
     case .skill(let id, _):
-      return BattleSelection(id: "jrpg.skill.\(id)")
+      return BattleSelection(id: "jrpg.skill.\(id.value)")
     case .item(let id, _):
-      return BattleSelection(id: "jrpg.item.\(id)")
+      return BattleSelection(id: "jrpg.item.\(id.value)")
     case .defend:
       return BattleSelection(id: "jrpg.defend")
     case .escape:
