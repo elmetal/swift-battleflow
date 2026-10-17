@@ -8,6 +8,10 @@ public struct Stats: Sendable, Equatable {
   public let defense: Int
   public let speed: Int
 
+  /// Creates stats.
+  ///
+  /// - Precondition: `0 <= hp <= maxHP`, `0 <= mp <= maxMP`, and `attack`,
+  ///   `defense`, and `speed` are not negative.
   public init(
     hp: Int,
     maxHP: Int,
@@ -17,6 +21,12 @@ public struct Stats: Sendable, Equatable {
     defense: Int,
     speed: Int
   ) {
+    precondition(0 <= hp && hp <= maxHP, "Stats hp must be within 0...maxHP.")
+    precondition(0 <= mp && mp <= maxMP, "Stats mp must be within 0...maxMP.")
+    precondition(attack >= 0, "Stats attack must not be negative.")
+    precondition(defense >= 0, "Stats defense must not be negative.")
+    precondition(speed >= 0, "Stats speed must not be negative.")
+
     self.hp = hp
     self.maxHP = maxHP
     self.mp = mp
