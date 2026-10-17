@@ -6,6 +6,38 @@ public enum BattleResult: Sendable, Equatable {
   case draw  // Neither side prevails.
 }
 
+/// Engine outcomes for the default JRPG results.
+extension BattleOutcome {
+  public static let victory = BattleOutcome("jrpg.victory")
+  public static let defeat = BattleOutcome("jrpg.defeat")
+  public static let escape = BattleOutcome("jrpg.escape")
+  public static let draw = BattleOutcome("jrpg.draw")
+}
+
+extension BattleResult {
+  /// The engine outcome that represents this result.
+  public var outcome: BattleOutcome {
+    switch self {
+    case .victory: .victory
+    case .defeat: .defeat
+    case .escape: .escape
+    case .draw: .draw
+    }
+  }
+
+  /// Creates the result that corresponds to an engine outcome, or `nil` when
+  /// the outcome does not belong to the JRPG rule set.
+  public init?(outcome: BattleOutcome) {
+    switch outcome {
+    case .victory: self = .victory
+    case .defeat: self = .defeat
+    case .escape: self = .escape
+    case .draw: self = .draw
+    default: return nil
+    }
+  }
+}
+
 /// Identifies a skill in the default JRPG rule set.
 public struct SkillID: Hashable, Sendable {
   public let value: String

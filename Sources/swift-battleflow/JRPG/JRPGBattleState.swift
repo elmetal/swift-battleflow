@@ -86,6 +86,11 @@ public struct JRPGBattleState: Sendable, Equatable {
     engineState.isBattleEnded
   }
 
+  /// The JRPG result of the battle, or `nil` while it is ongoing.
+  public var result: BattleResult? {
+    engineState.outcome.flatMap(BattleResult.init(outcome:))
+  }
+
   /// Returns the player-controlled combatants that are still active.
   public var alivePlayers: [Combatant] {
     playerIDs.compactMap { id in

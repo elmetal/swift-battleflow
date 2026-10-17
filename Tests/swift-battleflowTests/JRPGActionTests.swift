@@ -85,7 +85,7 @@ func testAttackPreconditions(scenario: String) async throws {
   case "unknown target":
     targetID = CombatantID("ghost")
   default:
-    phase = .victory
+    phase = .ended(.victory)
   }
 
   let state = makeState(players: [hero], enemies: [goblin], phase: phase)

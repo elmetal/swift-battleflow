@@ -138,17 +138,7 @@ extension JRPGReducer {
     result: BattleResult
   ) -> Reduction<JRPGBattleState, JRPGAction> {
 
-    let finalPhase: BattlePhase
-    switch result {
-    case .victory:
-      finalPhase = .victory
-    case .defeat:
-      finalPhase = .defeat
-    case .escape, .draw:
-      finalPhase = .escape
-    }
-
-    let newState = state.withPhase(finalPhase)
+    let newState = state.withPhase(.ended(result.outcome))
 
     let commands: [any Command] = [
       BaseCommand(id: "battle_end_\(result)", priority: 1),
@@ -240,7 +230,7 @@ extension JRPGReducer {
 
     // Player escape ends the encounter immediately.
     if state.playerIDs.contains(escaper) {
-      let newState = state.withPhase(.escape)
+      let newState = state.withPhase(.ended(.escape))
       let commands: [any Command] = [
         BaseCommand(id: "escape_success", priority: 2)
       ]
