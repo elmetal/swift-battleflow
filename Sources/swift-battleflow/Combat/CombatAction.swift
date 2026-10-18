@@ -40,6 +40,9 @@ public enum CombatEvent<Rules: CombatRules>: Command {
   /// A combatant's turn came, but it could no longer act.
   case skipped(actor: CombatantID)
 
+  /// The battle reached a turn boundary, with the rules' effects for it.
+  case boundary(Rules.Turns.Boundary, effects: [Rules.Effect])
+
   /// The battle ended.
   case ended(BattleOutcome)
 
@@ -48,6 +51,7 @@ public enum CombatEvent<Rules: CombatRules>: Command {
     case .started: "combat.started"
     case .performed(let actor, _, _): "combat.performed.\(actor.value)"
     case .skipped(let actor): "combat.skipped.\(actor.value)"
+    case .boundary: "combat.boundary"
     case .ended(let outcome): "combat.ended.\(outcome.value)"
     }
   }

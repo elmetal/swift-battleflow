@@ -129,6 +129,35 @@ func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
 }
 ```
 
+## React to Turn Boundaries
+
+Some effects don't come from a command: poison that hurts at the end of a
+turn, regeneration, buffs that expire, sleep that wears off. Return them from
+``CombatRules/effects(at:in:random:)``. The turn system decides which
+boundaries exist; for ``RoundBasedTurns`` they are the start and end of each
+combatant's turn and of each round.
+
+```swift
+func effects(
+  at boundary: Turns.Boundary, in state: CombatState<Self>, random: inout Generator
+) -> [Effect] {
+  switch boundary {
+  case .turnEnded(let id):
+    let poison = state.roster[id]!.poison
+    return poison > 0 ? [.damage(id, amount: poison)] : []
+  case .roundEnded:
+    return state.roster.stats.keys.filter { state.roster[$0]!.sleep > 0 }.map { .sleepWoreOff($0) }
+  case .roundStarted, .turnStarted:
+    return []
+  }
+}
+```
+
+The combat layer applies these effects like any other, emits a
+``CombatEvent/boundary(_:effects:)`` event, and checks the outcome afterwards,
+so poison can decide a battle. A turn's start is handled before its command,
+so an effect there can, for example, wake a combatant up in time to act.
+
 ## Choose a Turn System
 
 A turn system decides who may submit a command and who acts next. Pick one by
@@ -192,6 +221,8 @@ from the rules in a protocol that refines ``CombatRules``, and implement:
 - Optionally ``TurnSystem/begin(with:rules:)``,
   ``TurnSystem/didPerform(_:by:in:rules:)``, and
   ``TurnSystem/advanceTime(by:in:rules:)``.
+- To offer turn boundaries, declare a `Boundary` type, record boundaries as
+  they happen, and return them from ``TurnSystem/takeBoundaries()``.
 
 For example, a system in which sides alternate and hitting a weakness costs
 only half a turn reads the effects in `didPerform`:

@@ -19,6 +19,22 @@ public protocol RoundBasedRules: CombatRules {
 /// After the last command of a round, the next ``CombatAction/performNextAction``
 /// starts the next round.
 public struct RoundBasedTurns<Rules: RoundBasedRules>: TurnSystem {
+  /// The boundaries of rounds and of each combatant's turn.
+  public enum Boundary: Sendable, Equatable {
+    /// A round started; reached when the battle starts and after each round.
+    case roundStarted(Int)
+
+    /// Every command of the round has run.
+    case roundEnded(Int)
+
+    /// A combatant's turn came, before its command runs, even if it can no
+    /// longer act.
+    case turnStarted(CombatantID)
+
+    /// A combatant performed its command.
+    case turnEnded(CombatantID)
+  }
+
   /// The current round, starting at 1.
   public private(set) var round = 0
 
@@ -31,10 +47,13 @@ public struct RoundBasedTurns<Rules: RoundBasedRules>: TurnSystem {
   /// Whether every command of the round has been submitted.
   public private(set) var isExecuting = false
 
+  private var boundaries: [Boundary] = []
+
   public init() {}
 
   public mutating func begin(with roster: CombatRoster<Rules.Stats>, rules: Rules) {
     round = 1
+    boundaries.append(.roundStarted(round))
   }
 
   public func awaitingCommand(in roster: CombatRoster<Rules.Stats>) -> Set<CombatantID> {
@@ -73,12 +92,27 @@ public struct RoundBasedTurns<Rules: RoundBasedRules>: TurnSystem {
       return nil
     }
     guard !order.isEmpty else {
+      boundaries.append(.roundEnded(round))
       round += 1
       commands = [:]
       isExecuting = false
+      boundaries.append(.roundStarted(round))
       return nil
     }
     let actor = order.removeFirst()
+    boundaries.append(.turnStarted(actor))
     return (actor, commands[actor]!)
+  }
+
+  public mutating func didPerform(
+    _ effects: [Rules.Effect], by actor: CombatantID, in roster: CombatRoster<Rules.Stats>,
+    rules: Rules
+  ) {
+    boundaries.append(.turnEnded(actor))
+  }
+
+  public mutating func takeBoundaries() -> [Boundary] {
+    defer { boundaries = [] }
+    return boundaries
   }
 }
