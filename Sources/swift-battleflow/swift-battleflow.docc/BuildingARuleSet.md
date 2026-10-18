@@ -129,6 +129,33 @@ func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
 }
 ```
 
+## Let the Game Choose Commands
+
+For computer-controlled combatants, return a command from
+``CombatRules/automaticCommand(for:in:random:)``. After every action, the
+combat layer asks about each combatant awaiting a command, in ID order,
+submits what you return, and emits ``CombatEvent/submittedAutomatically(actor:command:)``.
+Returning `nil` leaves the choice to a player, so your game decides who is
+computer-controlled, for example by side:
+
+```swift
+func automaticCommand(
+  for actor: CombatantID, in state: CombatState<Self>, random: inout Generator
+) -> Command? {
+  guard state.roster.side(of: actor) == .monsters else { return nil }
+  let targets = state.roster.members(of: .party).filter { state.roster[$0]!.canAct }
+    .sorted { $0.value < $1.value }
+  return targets.isEmpty ? nil : .attack(targets[Int(random.nextRoll() * Double(targets.count))])
+}
+```
+
+Decide whether the combatant is computer-controlled before drawing from
+`random`; rolls drawn when you return `nil` are discarded. Because choices are
+made inside the reducer with the battle's generator, a replay only needs the
+seed and the players' actions. If your AI runs asynchronously, for example on a
+server, keep returning `nil` and dispatch ``CombatAction/submit(_:by:)`` when
+its decision arrives.
+
 ## React to Turn Boundaries
 
 Some effects don't come from a command: poison that hurts at the end of a

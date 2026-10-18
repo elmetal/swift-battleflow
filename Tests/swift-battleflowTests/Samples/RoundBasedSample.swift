@@ -50,6 +50,23 @@ struct RoundSampleRules<Generator: BattleRandomGenerator>: RoundBasedRules {
   /// The chance of a critical hit, which ignores defense.
   var criticalChance = 1.0 / 32
 
+  /// The sides whose combatants the game controls.
+  var automaticSides: Set<BattleGroupID> = []
+
+  /// Computer-controlled combatants attack a random living opponent.
+  func automaticCommand(
+    for actor: CombatantID, in state: CombatState<Self>, random: inout Generator
+  ) -> Command? {
+    let roster = state.roster
+    guard let side = roster.side(of: actor), automaticSides.contains(side) else { return nil }
+    let opponents = roster.sides.keys.filter { $0 != side }
+      .flatMap { roster.members(of: $0) }
+      .filter { roster[$0]!.canAct }
+      .sorted { $0.value < $1.value }
+    guard !opponents.isEmpty else { return nil }
+    return .attack(opponents[Int(random.nextRoll() * Double(opponents.count))])
+  }
+
   func resolve(
     _ command: Command, by actor: CombatantID, in state: CombatState<Self>,
     random: inout Generator

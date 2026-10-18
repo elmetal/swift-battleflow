@@ -47,6 +47,17 @@ public protocol CombatRules: Sendable {
     random: inout Generator
   ) -> [Effect]
 
+  /// Returns a command for a combatant that the game controls, or `nil` when
+  /// a player chooses the combatant's command.
+  ///
+  /// The combat layer asks after every action, for each combatant awaiting a
+  /// command, in ID order, and submits the returned command. Decide whether
+  /// the combatant is computer-controlled before drawing from `random`: rolls
+  /// drawn when returning `nil` are discarded. The default returns `nil`.
+  func automaticCommand(
+    for actor: CombatantID, in state: CombatState<Self>, random: inout Generator
+  ) -> Command?
+
   /// Returns the effects that happen when the battle reaches a turn
   /// boundary, such as poison at the end of a turn.
   ///
@@ -66,6 +77,12 @@ public protocol CombatRules: Sendable {
 }
 
 extension CombatRules {
+  public func automaticCommand(
+    for actor: CombatantID, in state: CombatState<Self>, random: inout Generator
+  ) -> Command? {
+    nil
+  }
+
   public func effects(
     at boundary: Turns.Boundary, in state: CombatState<Self>, random: inout Generator
   ) -> [Effect] {

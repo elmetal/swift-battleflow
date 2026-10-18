@@ -154,6 +154,22 @@ struct ActiveTimeSampleRules<Generator: BattleRandomGenerator>: ActiveTimeRules 
 
   var mode: ActiveTimeMode = .active
 
+  /// The sides whose combatants the game controls.
+  var automaticSides: Set<BattleGroupID> = []
+
+  /// Computer-controlled combatants attack the living opponent with the
+  /// lowest HP.
+  func automaticCommand(
+    for actor: CombatantID, in state: CombatState<Self>, random: inout Generator
+  ) -> Command? {
+    let roster = state.roster
+    guard let side = roster.side(of: actor), automaticSides.contains(side) else { return nil }
+    let opponents: BattleGroupID = side == .allies ? .foes : .allies
+    let target = roster.members(of: opponents).filter { roster[$0]!.canAct }
+      .min { (roster[$0]!.hp, $0.value) < (roster[$1]!.hp, $1.value) }
+    return target.map { .attack($0) }
+  }
+
   func resolve(
     _ command: Command, by actor: CombatantID, in state: CombatState<Self>,
     random: inout Generator
