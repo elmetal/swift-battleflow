@@ -35,10 +35,10 @@ func testStoreHistoryAndReset() async throws {
   let store = BattleFlow.makeStore()
 
   store.advanceTurn()
-  store.advance(to: .actionExecution)
-  #expect(store.actionHistory == [.incrementTurn, .transitionPhase(.actionExecution)])
+  store.advance(to: .ongoing)
+  #expect(store.actionHistory == [.incrementTurn, .transitionPhase(.ongoing)])
 
-  store.reset(to: BattleState(phase: .turnSelection, turnCount: 5))
+  store.reset(to: BattleState(phase: .ongoing, turnCount: 5))
   #expect(store.turnCount == 5)
   #expect(store.actionHistory.isEmpty)
 

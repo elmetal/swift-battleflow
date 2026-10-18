@@ -68,10 +68,8 @@ extension CombatReducer {
     var turns = Rules.Turns()
     turns.begin(with: roster, rules: rules)
 
-    // The engine's intermediate phases describe one particular flow, so the
-    // combat layer only distinguishes preparation, ongoing, and ended.
     let newState = state.with(
-      engineState: engineState.withPhase(.actionExecution), stats: roster.stats, turns: turns)
+      engineState: engineState.withPhase(.ongoing), stats: roster.stats, turns: turns)
     return Reduction(state: newState, commands: [CombatEvent<Rules>.started])
   }
 

@@ -9,10 +9,10 @@ func testEngineCustomOutcome() async throws {
   let timeout = BattleOutcome("custom.timeout")
 
   let state = BattleReducer().reduce(
-    state: BattleState(phase: .actionExecution), action: .transitionPhase(.ended(timeout))
+    state: BattleState(phase: .ongoing), action: .transitionPhase(.ended(timeout))
   ).state
 
   #expect(state.isBattleEnded)
   #expect(state.outcome == timeout)
-  #expect(BattleState(phase: .actionExecution).outcome == nil)
+  #expect(BattleState(phase: .ongoing).outcome == nil)
 }

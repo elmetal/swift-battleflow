@@ -13,12 +13,13 @@ public struct BattleOutcome: Hashable, Sendable {
   }
 }
 
-/// Represents the current phase of a battle sequence.
+/// Represents the current phase of a battle.
+///
+/// Phases within an ongoing battle, such as selecting commands or waiting for
+/// gauges, depend on the turn system, so turn systems track them themselves.
 public enum BattlePhase: Sendable, Equatable {
-  case preparation  // Battle setup.
-  case turnSelection  // Choosing the next actor.
-  case actionExecution  // Resolving chosen actions.
-  case effectResolution  // Processing pending effects.
+  case preparation  // The battle has not started.
+  case ongoing  // The battle is in progress.
   case ended(BattleOutcome)  // The battle is over with a rule-defined outcome.
 }
 

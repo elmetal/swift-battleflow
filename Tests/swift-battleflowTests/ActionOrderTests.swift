@@ -8,7 +8,7 @@ private let a = CombatantID("a")
 private let b = CombatantID("b")
 
 private func battle() -> BattleState {
-  BattleState(phase: .actionExecution)
+  BattleState(phase: .ongoing)
     .withParticipant(BattleParticipant(id: a))
     .withParticipant(BattleParticipant(id: b))
 }

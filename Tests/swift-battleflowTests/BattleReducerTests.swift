@@ -7,7 +7,7 @@ import Testing
 @Test("Reducer handles advance turn and phase change")
 func testReducerAdvanceTurnAndPhase() async throws {
   let reducer = BattleReducer()
-  let state = BattleState(phase: .turnSelection, turnCount: 3, currentActor: CombatantID("hero"))
+  let state = BattleState(phase: .ongoing, turnCount: 3, currentActor: CombatantID("hero"))
 
   let turnReduction = reducer.reduce(state: state, action: .incrementTurn)
   #expect(turnReduction.state.turnCount == 4)
@@ -15,18 +15,18 @@ func testReducerAdvanceTurnAndPhase() async throws {
   #expect(turnReduction.commands.contains { ($0 as? BaseCommand)?.id == "turn_advance" })
 
   let phaseReduction = reducer.reduce(
-    state: state, action: .transitionPhase(.actionExecution))
-  #expect(phaseReduction.state.phase == .actionExecution)
+    state: state, action: .transitionPhase(.ongoing))
+  #expect(phaseReduction.state.phase == .ongoing)
   #expect(
     phaseReduction.commands.contains {
-      ($0 as? BaseCommand)?.id == "phase_transition_actionExecution"
+      ($0 as? BaseCommand)?.id == "phase_transition_ongoing"
     })
 }
 
 @Test("Reducer handles engine actions directly")
 func testReducerBattleActionDirectly() async throws {
   let reducer = BattleReducer()
-  let state = BattleState(phase: .turnSelection, turnCount: 1)
+  let state = BattleState(phase: .ongoing, turnCount: 1)
 
   let reduction = reducer.reduce(state: state, action: BattleAction.incrementTurn)
 

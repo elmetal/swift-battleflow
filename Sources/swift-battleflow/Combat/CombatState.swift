@@ -43,7 +43,7 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
 
   /// Whether the battle has started and not yet ended.
   public var isOngoing: Bool {
-    engineState.phase != .preparation && !engineState.isBattleEnded
+    engineState.phase == .ongoing
   }
 
   /// Whether the battle has ended.
