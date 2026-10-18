@@ -1,31 +1,55 @@
 /// A store specialized for the default JRPG rule set.
-public typealias JRPGBattleStore = Store<JRPGReducer>
+public typealias JRPGBattleStore<Generator: BattleRandomGenerator> = Store<JRPGReducer<Generator>>
 
-extension JRPGBattleStore {
-  /// Creates a store using the provided initial JRPG battle state.
+/// A reducer that applies the default JRPG rule set.
+///
+/// Stores whose reducer conforms get the JRPG convenience API, whatever
+/// random generator the battle uses.
+public protocol JRPGRuleReducer: Reducer
+where State == JRPGBattleState<Generator>, Action == JRPGAction {
+  associatedtype Generator: BattleRandomGenerator
+}
+
+extension JRPGReducer: JRPGRuleReducer {}
+
+extension Store {
+  /// Creates a JRPG store using the provided initial state and the standard
+  /// rules.
   ///
-  /// - Parameter initialState: The starting state. The default value produces
-  ///   an empty battle.
-  public convenience init(initialState: JRPGBattleState = JRPGBattleState()) {
+  /// - Parameter initialState: The starting state, including its random
+  ///   generator.
+  public convenience init<Generator>(initialState: JRPGBattleState<Generator>)
+  where R == JRPGReducer<Generator> {
     self.init(initialState: initialState, reducer: JRPGReducer())
   }
+}
 
-  /// Creates an empty-battle store that applies the provided reducer.
-  ///
-  /// - Parameter reducer: The reducer that applies the JRPG rules.
-  public convenience init(reducer: JRPGReducer) {
-    self.init(initialState: JRPGBattleState(), reducer: reducer)
+extension Store where R == JRPGReducer<SeededBattleRandomGenerator> {
+  /// Creates an empty-battle store that uses a seeded generator with seed `0`.
+  public convenience init() {
+    self.init(initialState: JRPGBattleState())
   }
 
-  /// Resets the store to a fresh battle and clears the action history.
+  /// Creates an empty-battle store that applies the provided reducer and uses
+  /// a seeded generator with seed `0`.
+  ///
+  /// - Parameter reducer: The reducer that applies the JRPG rules.
+  public convenience init(reducer: JRPGReducer<SeededBattleRandomGenerator>) {
+    self.init(initialState: JRPGBattleState(), reducer: reducer)
+  }
+}
+
+extension Store where R: JRPGRuleReducer {
+  /// Resets the store to a fresh battle that keeps the current random
+  /// generator, and clears the action history.
   public func reset() {
-    reset(to: JRPGBattleState())
+    reset(to: JRPGBattleState(random: state.random))
   }
 }
 
 // MARK: - Convenience API
 
-extension JRPGBattleStore {
+extension Store where R: JRPGRuleReducer {
 
   /// Starts a battle with the provided player and enemy rosters.
   ///
@@ -93,7 +117,7 @@ extension JRPGBattleStore {
 
 // MARK: - State Queries
 
-extension JRPGBattleStore {
+extension Store where R: JRPGRuleReducer {
 
   /// Indicates whether the battle has ended.
   public var isBattleEnded: Bool {
@@ -152,7 +176,7 @@ extension JRPGBattleStore {
 
 // MARK: - Debug Utilities
 
-extension JRPGBattleStore {
+extension Store where R: JRPGRuleReducer {
 
   /// Prints a snapshot of the current state to the console.
   public func logCurrentState() {

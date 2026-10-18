@@ -93,7 +93,7 @@ func testReducerBattleActionDirectly() async throws {
 
 @Test("JRPGReducer handles JRPG actions directly")
 func testJRPGReducerActionDirectly() async throws {
-  let reducer = JRPGReducer()
+  let reducer = JRPGReducer<SeededBattleRandomGenerator>()
 
   let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, isPlayer: true)
   let enemy = JRPGBattleFlow.makeCharacter(name: "Slime", hp: 40, isPlayer: false)

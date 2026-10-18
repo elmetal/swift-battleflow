@@ -8,12 +8,18 @@ extension BattleGroupID {
 ///
 /// The engine state is the single source of truth for participants and
 /// groups; ``playerIDs`` and ``enemyIDs`` are derived from its groups.
-public struct JRPGBattleState: Sendable, Equatable {
+///
+/// The state holds the battle's random generator as a value, so reducing the
+/// same state and action always gives the same result.
+public struct JRPGBattleState<Generator: BattleRandomGenerator>: Sendable, Equatable {
   public let engineState: BattleState
   public let combatants: [CombatantID: Combatant]
 
   /// The actions that combatants selected for the current turn.
   public let selections: [CombatantID: SelectedAction]
+
+  /// The random generator, advanced each time the reducer draws a roll.
+  public let random: Generator
 
   /// Creates a state from an engine state, its combatants, and their
   /// selections.
@@ -23,7 +29,8 @@ public struct JRPGBattleState: Sendable, Equatable {
   public init(
     engineState: BattleState = BattleState(),
     combatants: [CombatantID: Combatant] = [:],
-    selections: [CombatantID: SelectedAction] = [:]
+    selections: [CombatantID: SelectedAction] = [:],
+    random: Generator
   ) {
     precondition(
       Set(combatants.keys) == Set(engineState.participants.keys),
@@ -35,6 +42,7 @@ public struct JRPGBattleState: Sendable, Equatable {
     self.engineState = engineState
     self.combatants = combatants
     self.selections = selections
+    self.random = random
   }
 
   public init(
@@ -44,7 +52,8 @@ public struct JRPGBattleState: Sendable, Equatable {
     enemyIDs: Set<CombatantID> = [],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
-    pendingCommands: [any Command] = []
+    pendingCommands: [any Command] = [],
+    random: Generator
   ) {
     var participants: [CombatantID: BattleParticipant] = [:]
     for id in combatants.keys {
@@ -63,7 +72,7 @@ public struct JRPGBattleState: Sendable, Equatable {
       pendingCommands: pendingCommands
     )
 
-    self.init(engineState: engineState, combatants: combatants)
+    self.init(engineState: engineState, combatants: combatants, random: random)
   }
 
   /// The player-controlled combatant IDs, derived from the engine groups.
@@ -121,7 +130,14 @@ public struct JRPGBattleState: Sendable, Equatable {
   }
 
   public func withEngineState(_ newEngineState: BattleState) -> JRPGBattleState {
-    JRPGBattleState(engineState: newEngineState, combatants: combatants, selections: selections)
+    JRPGBattleState(
+      engineState: newEngineState, combatants: combatants, selections: selections, random: random)
+  }
+
+  /// Returns a new state with a different random generator.
+  public func withRandom(_ newRandom: Generator) -> JRPGBattleState {
+    JRPGBattleState(
+      engineState: engineState, combatants: combatants, selections: selections, random: newRandom)
   }
 
   /// Returns a new state that records the combatant's selection.
@@ -129,12 +145,12 @@ public struct JRPGBattleState: Sendable, Equatable {
     var newSelections = selections
     newSelections[id] = selection
     return JRPGBattleState(
-      engineState: engineState, combatants: combatants, selections: newSelections)
+      engineState: engineState, combatants: combatants, selections: newSelections, random: random)
   }
 
   /// Returns a new state without any selections.
   public func removingAllSelections() -> JRPGBattleState {
-    JRPGBattleState(engineState: engineState, combatants: combatants)
+    JRPGBattleState(engineState: engineState, combatants: combatants, random: random)
   }
 
   /// Returns a new state with the provided combatant updated or inserted.
@@ -145,7 +161,8 @@ public struct JRPGBattleState: Sendable, Equatable {
     return JRPGBattleState(
       engineState: engineState.withParticipant(BattleParticipant(id: combatant.id)),
       combatants: newCombatants,
-      selections: selections
+      selections: selections,
+      random: random
     )
   }
 
@@ -162,5 +179,40 @@ public struct JRPGBattleState: Sendable, Equatable {
   /// Returns a new state with all pending commands removed.
   public func removingAllCommands() -> JRPGBattleState {
     withEngineState(engineState.removingAllCommands())
+  }
+}
+
+// MARK: - Default Generator
+
+extension JRPGBattleState where Generator == SeededBattleRandomGenerator {
+  /// Creates a state that uses a seeded generator with seed `0`.
+  ///
+  /// The fixed seed makes battles reproducible. To vary battles, pass a
+  /// generator seeded from the system instead; see
+  /// <doc:ChoosingARandomGenerator>.
+  public init(
+    engineState: BattleState = BattleState(),
+    combatants: [CombatantID: Combatant] = [:],
+    selections: [CombatantID: SelectedAction] = [:]
+  ) {
+    self.init(
+      engineState: engineState, combatants: combatants, selections: selections,
+      random: SeededBattleRandomGenerator(seed: 0))
+  }
+
+  /// Creates a state that uses a seeded generator with seed `0`.
+  public init(
+    phase: BattlePhase = .preparation,
+    combatants: [CombatantID: Combatant] = [:],
+    playerIDs: Set<CombatantID> = [],
+    enemyIDs: Set<CombatantID> = [],
+    turnCount: Int = 0,
+    currentActor: CombatantID? = nil,
+    pendingCommands: [any Command] = []
+  ) {
+    self.init(
+      phase: phase, combatants: combatants, playerIDs: playerIDs, enemyIDs: enemyIDs,
+      turnCount: turnCount, currentActor: currentActor, pendingCommands: pendingCommands,
+      random: SeededBattleRandomGenerator(seed: 0))
   }
 }

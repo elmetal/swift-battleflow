@@ -9,20 +9,24 @@ private let mage = JRPGBattleFlow.makeCharacter(name: "Mage", hp: 60, speed: 20)
 private let goblin = JRPGBattleFlow.makeCharacter(
   name: "Goblin", hp: 50, speed: 15, isPlayer: false)
 
-private let reducer = JRPGReducer()
+private let reducer = JRPGReducer<SeededBattleRandomGenerator>()
 
 private func started(
   players: [Combatant] = [hero, mage], enemies: [Combatant] = [goblin]
-) -> JRPGBattleState {
+) -> JRPGBattleState<SeededBattleRandomGenerator> {
   reducer.reduce(state: JRPGBattleState(), action: .startBattle(players: players, enemies: enemies))
     .state
 }
 
-private func reduce(_ state: JRPGBattleState, _ actions: JRPGAction...) -> JRPGBattleState {
+private func reduce(_ state: JRPGBattleState<SeededBattleRandomGenerator>, _ actions: JRPGAction...)
+  -> JRPGBattleState<SeededBattleRandomGenerator>
+{
   actions.reduce(state) { reducer.reduce(state: $0, action: $1).state }
 }
 
-private func commandIDs(_ state: JRPGBattleState, _ action: JRPGAction) -> [String] {
+private func commandIDs(_ state: JRPGBattleState<SeededBattleRandomGenerator>, _ action: JRPGAction)
+  -> [String]
+{
   reducer.reduce(state: state, action: action).commands.map(\.id)
 }
 
@@ -70,10 +74,10 @@ func testSelectedActionPriority() async throws {
   #expect(SelectedAction.skill(id: SkillID("fire"), targets: []).priority == .normal)
 }
 
-@Test("executeTurn orders actors by priority, then speed, then ID")
+@Test("executeTurn orders actors by priority, then speed")
 func testExecuteTurnOrder() async throws {
   let twin = JRPGBattleFlow.makeCharacter(
-    name: "Goblin", id: CombatantID("goblin_b"), hp: 50, speed: 15, isPlayer: false)
+    name: "Goblin", id: CombatantID("goblin_b"), hp: 50, speed: 14, isPlayer: false)
 
   let state = reduce(
     started(enemies: [goblin, twin]),

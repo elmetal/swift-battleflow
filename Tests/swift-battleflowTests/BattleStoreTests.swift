@@ -99,16 +99,17 @@ func testStoreHistoryAndReset() async throws {
   #expect(store.state == BattleState())
 }
 
-@Test("JRPGBattleStore can be reset to a fresh battle")
+@Test("JRPGBattleStore can be reset to a fresh battle that keeps its generator")
 @MainActor
 func testJRPGStoreReset() async throws {
   let store = JRPGBattleFlow.makeStore()
+  let generator = store.state.random
   let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
 
   store.startBattle(players: [hero], enemies: [])
   store.reset()
 
-  #expect(store.state == JRPGBattleState())
+  #expect(store.state == JRPGBattleState(random: generator))
   #expect(store.actionHistory.isEmpty)
 }
 

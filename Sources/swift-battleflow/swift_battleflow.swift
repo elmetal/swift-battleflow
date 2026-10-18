@@ -28,14 +28,25 @@ public struct BattleFlow {
 /// The primary entry point for the default JRPG rule set.
 public struct JRPGBattleFlow {
 
-  /// Creates a new JRPG battle store configured for the provided initial state.
+  /// Creates a JRPG battle store for an empty battle whose seeded generator
+  /// is seeded from the system, so every battle differs.
   ///
-  /// - Parameter initialState: The starting JRPG state.
   /// - Returns: A fully initialized ``JRPGBattleStore`` ready to process JRPG actions.
   @MainActor
-  public static func makeStore(
-    initialState: JRPGBattleState = JRPGBattleState()
-  ) -> JRPGBattleStore {
+  public static func makeStore() -> JRPGBattleStore<SeededBattleRandomGenerator> {
+    let seed = UInt64.random(in: .min ... .max)
+    return makeStore(initialState: JRPGBattleState(random: SeededBattleRandomGenerator(seed: seed)))
+  }
+
+  /// Creates a JRPG battle store configured for the provided initial state.
+  ///
+  /// - Parameter initialState: The starting JRPG state, including its random
+  ///   generator.
+  /// - Returns: A fully initialized ``JRPGBattleStore`` ready to process JRPG actions.
+  @MainActor
+  public static func makeStore<Generator>(
+    initialState: JRPGBattleState<Generator>
+  ) -> JRPGBattleStore<Generator> {
     return JRPGBattleStore(initialState: initialState)
   }
 
