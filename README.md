@@ -134,7 +134,8 @@ print(store.state.outcome == BattleOutcome("victory"))  // true
 
 ## Learn More
 
-The DocC articles go further:
+The [documentation](https://elmetal.github.io/swift-battleflow/documentation/battleflow/)
+goes further:
 
 - **Building a Rule Set** — stats, commands and effects, the resolve pipeline,
   reactions and scheduled effects, turn boundaries, computer-controlled
