@@ -112,6 +112,26 @@ public struct ActiveTimeTurns<Rules: ActiveTimeRules>: TurnSystem {
     boundaries.append(.turnEnded(actor))
   }
 
+  /// Gives newcomers a gauge, and drops the gauges, ready entries, and
+  /// pending commands of combatants that left.
+  public mutating func didChangeRoster(
+    added: Set<CombatantID>, removed: Set<CombatantID>, in roster: CombatRoster<Rules.Stats>,
+    rules: Rules
+  ) {
+    for id in removed {
+      gauges[id] = nil
+    }
+    ready.removeAll { removed.contains($0) }
+    pending.removeAll { removed.contains($0.actor) }
+
+    for id in added.sorted(by: { $0.value < $1.value }) {
+      let gauge = rules.initialGauge(of: id, in: roster)
+      precondition((0...1).contains(gauge), "The initial gauge must be in 0...1.")
+      gauges[id] = gauge
+    }
+    fillGauges(by: 0, in: roster, rules: rules)
+  }
+
   public mutating func takeBoundaries() -> [Boundary] {
     defer { boundaries = [] }
     return boundaries

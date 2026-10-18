@@ -150,7 +150,7 @@ private struct Progress<Rules: CombatRules> {
     while outcome == nil, let effect = queue.popNext() {
       var roster = state.roster
       rules.apply(effect, to: &roster)
-      state = state.with(stats: roster.stats)
+      update(roster, rules: rules)
       applied.append(effect)
 
       if let decided = rules.outcome(of: roster) {
@@ -165,6 +165,30 @@ private struct Progress<Rules: CombatRules> {
 
     state = state.with(scheduledEffects: queue.scheduled)
     return (applied, outcome)
+  }
+
+  /// Stores a roster changed by an effect, keeping the engine's participants
+  /// and groups in sync and telling the turn system who joined or left.
+  private mutating func update(_ roster: CombatRoster<Rules.Stats>, rules: Rules) {
+    let before = Set(state.stats.keys)
+    let after = Set(roster.stats.keys)
+    let added = after.subtracting(before)
+    let removed = before.subtracting(after)
+    guard !added.isEmpty || !removed.isEmpty else {
+      state = state.with(stats: roster.stats)
+      return
+    }
+
+    var engineState = state.engineState
+    for id in removed {
+      engineState = engineState.withoutParticipant(id)
+    }
+    for id in added {
+      engineState = engineState.withParticipant(id, in: roster.side(of: id))
+    }
+    var turns = state.turns
+    turns.didChangeRoster(added: added, removed: removed, in: roster, rules: rules)
+    state = state.with(engineState: engineState, stats: roster.stats, turns: turns)
   }
 
   /// Submits the rules' automatic commands, one at a time in ID order, until
