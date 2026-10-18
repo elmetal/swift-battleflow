@@ -18,7 +18,7 @@ private let state = JRPGBattleState(
 
 private func use(
   _ item: ItemID, on target: CombatantID?, rules: JRPGRules = .standard
-) -> Reduction<JRPGBattleState, JRPGAction> {
+) -> Reduction<JRPGBattleState<SeededBattleRandomGenerator>, JRPGAction> {
   JRPGReducer(rules: rules).reduce(
     state: state, action: .useItem(user: hero.id, item: item, target: target))
 }

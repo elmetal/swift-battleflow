@@ -8,7 +8,7 @@ private func makeState(
   players: [Combatant],
   enemies: [Combatant],
   phase: BattlePhase = .turnSelection
-) -> JRPGBattleState {
+) -> JRPGBattleState<SeededBattleRandomGenerator> {
   var combatants: [CombatantID: Combatant] = [:]
   for combatant in players + enemies {
     combatants[combatant.id] = combatant
@@ -55,7 +55,8 @@ func testAttackUsesInjectedRules() async throws {
   let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
   let goblin = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 80, isPlayer: false)
   let state = makeState(players: [hero], enemies: [goblin])
-  let reducer = JRPGReducer(rules: JRPGRules(physicalDamage: { _, _ in 7 }))
+  let reducer = JRPGReducer<SeededBattleRandomGenerator>(
+    rules: JRPGRules(physicalDamage: { _, _ in 7 }))
 
   let reduction = reducer.reduce(
     state: state, action: .attack(attacker: hero.id, target: goblin.id))

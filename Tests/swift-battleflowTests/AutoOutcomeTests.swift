@@ -8,16 +8,18 @@ private let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, attack: 5
 private let goblin = JRPGBattleFlow.makeCharacter(
   name: "Goblin", hp: 30, attack: 500, speed: 10, isPlayer: false)
 
-private let reducer = JRPGReducer()
+private let reducer = JRPGReducer<SeededBattleRandomGenerator>()
 
 private func started(
   players: [Combatant] = [hero], enemies: [Combatant] = [goblin]
-) -> JRPGBattleState {
+) -> JRPGBattleState<SeededBattleRandomGenerator> {
   reducer.reduce(state: JRPGBattleState(), action: .startBattle(players: players, enemies: enemies))
     .state
 }
 
-private func reduce(_ state: JRPGBattleState, _ actions: JRPGAction...) -> JRPGBattleState {
+private func reduce(_ state: JRPGBattleState<SeededBattleRandomGenerator>, _ actions: JRPGAction...)
+  -> JRPGBattleState<SeededBattleRandomGenerator>
+{
   actions.reduce(state) { reducer.reduce(state: $0, action: $1).state }
 }
 

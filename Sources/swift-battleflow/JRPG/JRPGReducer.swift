@@ -1,6 +1,6 @@
 /// Applies the default JRPG battle rules on top of the battle engine.
-public struct JRPGReducer: Reducer {
-  public typealias State = JRPGBattleState
+public struct JRPGReducer<Generator: BattleRandomGenerator>: Reducer {
+  public typealias State = JRPGBattleState<Generator>
   public typealias Action = JRPGAction
 
   /// The rules used to derive action outcomes.
@@ -16,8 +16,8 @@ public struct JRPGReducer: Reducer {
   /// referenced combatant exists and is not defeated. When an action during
   /// the battle changes combatants and one side is wiped out, the battle ends
   /// automatically.
-  public func reduce(state: JRPGBattleState, action: JRPGAction) -> Reduction<
-    JRPGBattleState, JRPGAction
+  public func reduce(state: State, action: JRPGAction) -> Reduction<
+    State, JRPGAction
   > {
     let reduction = reduceAction(state: state, action: action)
 
@@ -28,8 +28,8 @@ public struct JRPGReducer: Reducer {
     return resolvingOutcome(of: reduction, from: state)
   }
 
-  private func reduceAction(state: JRPGBattleState, action: JRPGAction) -> Reduction<
-    JRPGBattleState, JRPGAction
+  private func reduceAction(state: State, action: JRPGAction) -> Reduction<
+    State, JRPGAction
   > {
     switch action {
     case .engine(let engineAction):
@@ -109,14 +109,14 @@ extension JRPGReducer {
   // MARK: - Preconditions
 
   /// Indicates whether the combatant may take an action in the given state.
-  fileprivate func canAct(_ id: CombatantID, in state: JRPGBattleState) -> Bool {
+  fileprivate func canAct(_ id: CombatantID, in state: State) -> Bool {
     !state.isBattleEnded && canBeTargeted(id, in: state)
   }
 
   /// Indicates whether the item effect can apply to the target: revival needs
   /// a defeated target, and other effects need a living one.
   fileprivate func canReceive(
-    _ effect: ItemEffect, target: CombatantID, in state: JRPGBattleState
+    _ effect: ItemEffect, target: CombatantID, in state: State
   ) -> Bool {
     guard let stats = state.combatants[target]?.stats else {
       return false
@@ -128,7 +128,7 @@ extension JRPGReducer {
   }
 
   /// Indicates whether the combatant exists and is not defeated.
-  fileprivate func canBeTargeted(_ id: CombatantID, in state: JRPGBattleState) -> Bool {
+  fileprivate func canBeTargeted(_ id: CombatantID, in state: State) -> Bool {
     state.combatants[id]?.stats.isDefeated == false
   }
 }
@@ -140,9 +140,9 @@ extension JRPGReducer {
   /// Ends the battle when the reduction changed combatants and one side has
   /// been wiped out.
   fileprivate func resolvingOutcome(
-    of reduction: Reduction<JRPGBattleState, JRPGAction>,
-    from previousState: JRPGBattleState
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+    of reduction: Reduction<State, JRPGAction>,
+    from previousState: State
+  ) -> Reduction<State, JRPGAction> {
 
     let state = reduction.state
     guard !state.isBattleEnded, state.combatants != previousState.combatants,
@@ -161,7 +161,7 @@ extension JRPGReducer {
 
   /// Returns the result decided by the combatants' state, if any. A side with
   /// no members never counts as defeated.
-  fileprivate func decidedResult(in state: JRPGBattleState) -> BattleResult? {
+  fileprivate func decidedResult(in state: State) -> BattleResult? {
     if !state.enemyIDs.isEmpty && state.aliveEnemies.isEmpty {
       return .victory
     }
@@ -174,9 +174,9 @@ extension JRPGReducer {
   // MARK: - Engine Forwarding
 
   fileprivate func reduceEngine(
-    state: JRPGBattleState,
+    state: State,
     action: BattleAction
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     let reduction = BattleReducer().reduce(state: state.engineState, action: action)
 
@@ -190,10 +190,10 @@ extension JRPGReducer {
   // MARK: - Battle Flow Control
 
   fileprivate func reduceStartBattle(
-    state: JRPGBattleState,
+    state: State,
     players: [Combatant],
     enemies: [Combatant]
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     let combatants = Dictionary(
       (players + enemies).map { ($0.id, $0) },
@@ -203,14 +203,15 @@ extension JRPGReducer {
     let playerIDs = Set(players.map(\.id))
     let enemyIDs = Set(enemies.map(\.id))
 
-    let newState = JRPGBattleState(
+    let newState = State(
       phase: .turnSelection,
       combatants: combatants,
       playerIDs: playerIDs,
       enemyIDs: enemyIDs,
       turnCount: 1,
       currentActor: nil,
-      pendingCommands: []
+      pendingCommands: [],
+      random: state.random
     )
 
     let commands: [any Command] = [
@@ -222,9 +223,9 @@ extension JRPGReducer {
   }
 
   fileprivate func reduceEndBattle(
-    state: JRPGBattleState,
+    state: State,
     result: BattleResult
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     let newState = state.withPhase(.ended(result.outcome))
 
@@ -239,23 +240,31 @@ extension JRPGReducer {
   // MARK: - Turn Flow
 
   fileprivate func reduceExecuteTurn(
-    state: JRPGBattleState
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+    state: State
+  ) -> Reduction<State, JRPGAction> {
 
-    let actors = state.livingCombatants.map { combatant in
+    // Draw one roll per actor in ID order, so the roll each actor receives
+    // does not depend on dictionary order.
+    var random = state.random
+    let actors = state.livingCombatants.sorted { $0.id.value < $1.id.value }.map { combatant in
       guard let selection = state.selections[combatant.id] else {
         preconditionFailure("Every living combatant must select before the turn executes.")
       }
-      return (id: combatant.id, priority: selection.priority, speed: combatant.stats.speed)
+      return (
+        id: combatant.id, priority: selection.priority, speed: combatant.stats.speed,
+        roll: random.nextRoll()
+      )
     }
 
-    // Higher priority first, then higher speed, then ascending ID. The ID is
-    // compared in swapped order so that it sorts ascending.
+    // Higher priority first, then higher speed, then the higher roll breaks
+    // ties. The ID is compared in swapped order so that it sorts ascending if
+    // rolls are equal.
     let order = actors.sorted { lhs, rhs in
-      (lhs.priority, lhs.speed, rhs.id.value) > (rhs.priority, rhs.speed, lhs.id.value)
+      (lhs.priority, lhs.speed, lhs.roll, rhs.id.value)
+        > (rhs.priority, rhs.speed, rhs.roll, lhs.id.value)
     }.map(\.id)
 
-    let newState = state.withEngineState(
+    let newState = state.withRandom(random).withEngineState(
       state.engineState.withPhase(.actionExecution).withActionOrder(order))
 
     let commands: [any Command] = [
@@ -266,8 +275,8 @@ extension JRPGReducer {
   }
 
   fileprivate func reducePerformNextAction(
-    state: JRPGBattleState
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+    state: State
+  ) -> Reduction<State, JRPGAction> {
 
     let advanced = state.withEngineState(state.engineState.advancingActor())
 
@@ -292,10 +301,10 @@ extension JRPGReducer {
   // MARK: - Character Actions
 
   fileprivate func reduceAttack(
-    state: JRPGBattleState,
+    state: State,
     attacker: CombatantID,
     target: CombatantID
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     guard let attackerCombatant = state.combatants[attacker],
       let targetCombatant = state.combatants[target]
@@ -322,11 +331,11 @@ extension JRPGReducer {
   }
 
   fileprivate func reduceUseSkill(
-    state: JRPGBattleState,
+    state: State,
     user: CombatantID,
     skill: SkillID,
     targets: [CombatantID]
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     // Placeholder implementation; extend with concrete skill logic.
     let commands: [any Command] = [
@@ -338,11 +347,11 @@ extension JRPGReducer {
   }
 
   fileprivate func reduceUseItem(
-    state: JRPGBattleState,
+    state: State,
     item: ItemID,
     effect: ItemEffect,
     target: CombatantID
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     guard let targetCombatant = state.combatants[target] else {
       preconditionFailure("Item preconditions must be checked before reducing.")
@@ -373,9 +382,9 @@ extension JRPGReducer {
   }
 
   fileprivate func reduceDefend(
-    state: JRPGBattleState,
+    state: State,
     defender: CombatantID
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     let commands: [any Command] = [
       BaseCommand(id: "defend_animation_\(defender.value)", priority: 1)
@@ -385,9 +394,9 @@ extension JRPGReducer {
   }
 
   fileprivate func reduceEscape(
-    state: JRPGBattleState,
+    state: State,
     escaper: CombatantID
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     // Player escape ends the encounter immediately.
     if state.playerIDs.contains(escaper) {
@@ -405,9 +414,9 @@ extension JRPGReducer {
   // MARK: - AI Coordination
 
   fileprivate func reduceRequestAIDecision(
-    state: JRPGBattleState,
+    state: State,
     combatantID: CombatantID
-  ) -> Reduction<JRPGBattleState, JRPGAction> {
+  ) -> Reduction<State, JRPGAction> {
 
     // AI decision-making will arrive in a future phase.
     let commands: [any Command] = [
