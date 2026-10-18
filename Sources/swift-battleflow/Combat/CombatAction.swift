@@ -34,6 +34,9 @@ public enum CombatEvent<Rules: CombatRules>: Command {
   /// The battle started.
   case started
 
+  /// The rules submitted a command for a computer-controlled combatant.
+  case submittedAutomatically(actor: CombatantID, command: Rules.Command)
+
   /// A combatant performed a command with the given effects.
   case performed(actor: CombatantID, command: Rules.Command, effects: [Rules.Effect])
 
@@ -49,6 +52,7 @@ public enum CombatEvent<Rules: CombatRules>: Command {
   public var id: String {
     switch self {
     case .started: "combat.started"
+    case .submittedAutomatically(let actor, _): "combat.submitted.\(actor.value)"
     case .performed(let actor, _, _): "combat.performed.\(actor.value)"
     case .skipped(let actor): "combat.skipped.\(actor.value)"
     case .boundary: "combat.boundary"

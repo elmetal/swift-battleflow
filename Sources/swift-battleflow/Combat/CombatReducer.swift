@@ -10,7 +10,16 @@ public struct CombatReducer<Rules: CombatRules>: Reducer {
     self.rules = rules
   }
 
+  /// Reduces an action, then submits the rules' automatic commands for
+  /// combatants that are awaiting one.
   public func reduce(state: State, action: Action) -> Reduction<State, Action> {
+    let reduction = reduceAction(state: state, action: action)
+    var progress = Progress(state: reduction.state, events: reduction.commands)
+    progress.submitAutomaticCommands(rules: rules)
+    return progress.reduction
+  }
+
+  private func reduceAction(state: State, action: Action) -> Reduction<State, Action> {
     switch action {
     case .start(let roster):
       guard state.engineState.phase == .preparation else {
@@ -142,6 +151,37 @@ private struct Progress<Rules: CombatRules> {
     }
     state = state.with(engineState: state.engineState.withPhase(.ended(outcome)))
     events.append(CombatEvent<Rules>.ended(outcome))
+  }
+
+  /// Submits the rules' automatic commands, one at a time in ID order, until
+  /// no awaiting combatant gets one.
+  mutating func submitAutomaticCommands(rules: Rules) {
+    while state.isOngoing, let next = nextAutomaticCommand(rules: rules) {
+      var random = next.random
+      var turns = state.turns
+      turns.record(next.command, by: next.actor, in: state.roster, rules: rules, random: &random)
+      state = state.with(turns: turns, random: random)
+      precondition(
+        !state.awaitingCommand.contains(next.actor),
+        "A turn system must stop awaiting a combatant once its command is recorded.")
+      events.append(
+        CombatEvent<Rules>.submittedAutomatically(actor: next.actor, command: next.command))
+      reachBoundaries(rules: rules)
+    }
+  }
+
+  /// Returns the first awaiting combatant, in ID order, that the rules choose
+  /// a command for, with the generator advanced by that choice.
+  private func nextAutomaticCommand(
+    rules: Rules
+  ) -> (actor: CombatantID, command: Rules.Command, random: Rules.Generator)? {
+    for actor in state.awaitingCommand.sorted(by: { $0.value < $1.value }) {
+      var random = state.random
+      if let command = rules.automaticCommand(for: actor, in: state, random: &random) {
+        return (actor, command, random)
+      }
+    }
+    return nil
   }
 
   /// Handles the boundaries the turn system reached, in order, until the
