@@ -226,7 +226,6 @@ extension BattleStore {
     print("Turn: \(state.turnCount)")
     print("Current Actor: \(state.currentActor?.value ?? "none")")
     print("Participants: \(state.participants.count)")
-    print("Pending Commands: \(state.pendingCommands.count)")
     print("==================")
   }
 

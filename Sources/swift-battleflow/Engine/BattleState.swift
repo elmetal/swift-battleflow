@@ -71,17 +71,13 @@ public struct BattleState: Sendable, Equatable {
   /// The participants that still have to act this turn, in order.
   public private(set) var actionOrder: [CombatantID]
 
-  /// Pending commands awaiting execution.
-  public private(set) var pendingCommands: [any Command]
-
   public init(
     phase: BattlePhase = .preparation,
     participants: [CombatantID: BattleParticipant] = [:],
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil,
-    actionOrder: [CombatantID] = [],
-    pendingCommands: [any Command] = []
+    actionOrder: [CombatantID] = []
   ) {
     self.phase = phase
     self.participants = participants
@@ -89,7 +85,6 @@ public struct BattleState: Sendable, Equatable {
     self.turnCount = turnCount
     self.currentActor = currentActor
     self.actionOrder = actionOrder
-    self.pendingCommands = pendingCommands
   }
 
   /// Indicates whether the battle has reached a terminal phase.
@@ -175,36 +170,4 @@ extension BattleState {
     updating { $0.currentActor = actorID }
   }
 
-  /// Returns a new state with additional pending commands appended.
-  public func appendingCommands(_ commands: [any Command]) -> BattleState {
-    updating { $0.pendingCommands += commands }
-  }
-
-  /// Returns a new state without the first pending command that has the given ID.
-  ///
-  /// The state is returned unchanged when no pending command has the ID.
-  public func removingFirstCommand(withID id: String) -> BattleState {
-    guard let index = pendingCommands.firstIndex(where: { $0.id == id }) else {
-      return self
-    }
-    return updating { _ = $0.pendingCommands.remove(at: index) }
-  }
-
-  /// Returns a new state with all pending commands removed.
-  public func removingAllCommands() -> BattleState {
-    updating { $0.pendingCommands = [] }
-  }
-}
-
-extension BattleState {
-  /// Custom ``Equatable`` implementation.
-  ///
-  /// Pending commands are type-erased, so they are compared element by element
-  /// with ``Command/isEqual(to:)``, which also requires matching concrete types.
-  public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
-    lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
-      && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
-      && lhs.actionOrder == rhs.actionOrder
-      && lhs.pendingCommands.elementsEqual(rhs.pendingCommands) { $0.isEqual(to: $1) }
-  }
 }

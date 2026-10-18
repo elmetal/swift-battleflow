@@ -37,16 +37,6 @@ public struct BattleReducer: Reducer {
     case .advanceActor:
       return Reduction(state: state.advancingActor())
 
-    // MARK: - Command Management
-    case .enqueueCommands(let commands):
-      return reduceEnqueueCommands(state: state, commands: commands)
-
-    case .markCommandExecuted(let commandID):
-      return reduceMarkCommandExecuted(state: state, commandID: commandID)
-
-    case .removeAllCommands:
-      return reduceRemoveAllCommands(state: state)
-
     }
   }
 }
@@ -89,31 +79,6 @@ extension BattleReducer {
 
     let newState = state.withCurrentActor(actorID)
 
-    return Reduction(state: newState)
-  }
-
-  // MARK: - Command Management
-
-  private func reduceEnqueueCommands(
-    state: BattleState,
-    commands: [any Command]
-  ) -> Reduction<BattleState, BattleAction> {
-
-    let newState = state.appendingCommands(commands)
-    return Reduction(state: newState)
-  }
-
-  private func reduceMarkCommandExecuted(
-    state: BattleState,
-    commandID: String
-  ) -> Reduction<BattleState, BattleAction> {
-
-    let newState = state.removingFirstCommand(withID: commandID)
-    return Reduction(state: newState)
-  }
-
-  private func reduceRemoveAllCommands(state: BattleState) -> Reduction<BattleState, BattleAction> {
-    let newState = state.removingAllCommands()
     return Reduction(state: newState)
   }
 }
