@@ -111,6 +111,19 @@ extension BattleState {
     }
   }
 
+  /// Returns a new state without the participant, removed from every group.
+  public func withoutParticipant(_ id: CombatantID) -> BattleState {
+    updating { state in
+      state.participants.remove(id)
+      for group in state.groups.keys {
+        state.groups[group]?.remove(id)
+      }
+      if state.currentActor == id {
+        state.currentActor = nil
+      }
+    }
+  }
+
   /// Returns a new state with a different battle phase.
   public func withPhase(_ newPhase: BattlePhase) -> BattleState {
     updating { $0.phase = newPhase }

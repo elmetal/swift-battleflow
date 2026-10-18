@@ -129,6 +129,39 @@ func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
 }
 ```
 
+## Change Combatants During a Battle
+
+Summons, reinforcements, and combatants that flee or are banished change who
+is in the battle. Express them as effects, and in
+``CombatRules/apply(_:to:)`` call ``CombatRoster/add(_:stats:to:)`` or
+``CombatRoster/remove(_:)``:
+
+```swift
+func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>) {
+  switch effect {
+  case .joined(let id, let stats, let side):
+    roster.add(id, stats: stats, to: side)
+  case .left(let id):
+    roster.remove(id)
+  // ...
+  }
+}
+```
+
+The combat layer keeps the engine's participants and sides in sync and tells
+the turn system through ``TurnSystem/didChangeRoster(added:removed:in:rules:)``.
+With ``RoundBasedTurns``, a combatant that leaves loses its place in the
+current round and newcomers submit commands from the next round. With
+``ActiveTimeTurns``, newcomers start with their initial gauge and a combatant
+that leaves loses its gauge and any pending command.
+
+Leaving is different from being defeated: a defeated combatant stays in the
+roster and only stops being able to act, so it can be revived, while a
+combatant that left is gone. Your outcome rule sees the current roster, so it
+can, for example, end the battle as an escape when the whole party has fled.
+Cancel scheduled effects that target a combatant that left if they no longer
+make sense.
+
 ## React to Effects
 
 The combat layer applies effects one at a time and calls

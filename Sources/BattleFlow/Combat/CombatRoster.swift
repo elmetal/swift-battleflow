@@ -4,7 +4,7 @@ public struct CombatRoster<Stats: CombatantStats>: Sendable, Equatable {
   public private(set) var stats: [CombatantID: Stats]
 
   /// The members of every side.
-  public let sides: [BattleGroupID: Set<CombatantID>]
+  public private(set) var sides: [BattleGroupID: Set<CombatantID>]
 
   /// Creates a roster from the members of each side.
   ///
@@ -43,6 +43,29 @@ public struct CombatRoster<Stats: CombatantStats>: Sendable, Equatable {
   /// The combatants that can act.
   public var actors: Set<CombatantID> {
     Set(stats.filter { $0.value.canAct }.keys)
+  }
+
+  /// Adds a combatant to a side, for example a summon or reinforcements.
+  ///
+  /// - Precondition: The combatant is not in the battle.
+  public mutating func add(_ id: CombatantID, stats: Stats, to side: BattleGroupID) {
+    precondition(self.stats[id] == nil, "A combatant ID must not appear twice in a battle.")
+    self.stats[id] = stats
+    sides[side, default: []].insert(id)
+  }
+
+  /// Removes a combatant from the battle, for example when it flees.
+  ///
+  /// A defeated combatant usually stays in the roster and only stops being
+  /// able to act; remove a combatant when it leaves the battle.
+  ///
+  /// - Precondition: The combatant is in the battle.
+  public mutating func remove(_ id: CombatantID) {
+    precondition(stats[id] != nil, "Cannot remove a combatant that is not in the battle.")
+    stats[id] = nil
+    for side in sides.keys {
+      sides[side]?.remove(id)
+    }
   }
 
   /// Changes the stats of a combatant.

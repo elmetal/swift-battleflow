@@ -111,6 +111,18 @@ public struct RoundBasedTurns<Rules: RoundBasedRules>: TurnSystem {
     boundaries.append(.turnEnded(actor))
   }
 
+  /// Removes combatants that left from the current round; newcomers submit
+  /// commands from the next round.
+  public mutating func didChangeRoster(
+    added: Set<CombatantID>, removed: Set<CombatantID>, in roster: CombatRoster<Rules.Stats>,
+    rules: Rules
+  ) {
+    order.removeAll { removed.contains($0) }
+    for id in removed {
+      commands[id] = nil
+    }
+  }
+
   public mutating func takeBoundaries() -> [Boundary] {
     defer { boundaries = [] }
     return boundaries

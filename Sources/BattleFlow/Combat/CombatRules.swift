@@ -161,6 +161,13 @@ public protocol TurnSystem: Sendable, Equatable {
   mutating func advanceTime(
     by seconds: Double, in roster: CombatRoster<Rules.Stats>, rules: Rules)
 
+  /// Observes combatants that joined or left the battle through an effect.
+  ///
+  /// The roster already reflects the change.
+  mutating func didChangeRoster(
+    added: Set<CombatantID>, removed: Set<CombatantID>, in roster: CombatRoster<Rules.Stats>,
+    rules: Rules)
+
   /// Removes and returns the boundaries reached since the last call, in
   /// order.
   ///
@@ -188,5 +195,10 @@ extension TurnSystem {
 
   public mutating func advanceTime(
     by seconds: Double, in roster: CombatRoster<Rules.Stats>, rules: Rules
+  ) {}
+
+  public mutating func didChangeRoster(
+    added: Set<CombatantID>, removed: Set<CombatantID>, in roster: CombatRoster<Rules.Stats>,
+    rules: Rules
   ) {}
 }
