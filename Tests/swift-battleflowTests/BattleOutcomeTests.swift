@@ -2,17 +2,18 @@ import Testing
 
 @testable import swift_battleflow
 
-// MARK: - Battle Outcome Tests
+@Suite("Battle outcomes")
+struct BattleOutcomeTests {
+  @Test("The engine ends a battle with a rule-defined outcome")
+  func engineCustomOutcome() {
+    let timeout = BattleOutcome("custom.timeout")
 
-@Test("The engine ends a battle with a rule-defined outcome")
-func testEngineCustomOutcome() async throws {
-  let timeout = BattleOutcome("custom.timeout")
+    let state = BattleReducer().reduce(
+      state: BattleState(phase: .ongoing), action: .transitionPhase(.ended(timeout))
+    ).state
 
-  let state = BattleReducer().reduce(
-    state: BattleState(phase: .ongoing), action: .transitionPhase(.ended(timeout))
-  ).state
-
-  #expect(state.isBattleEnded)
-  #expect(state.outcome == timeout)
-  #expect(BattleState(phase: .ongoing).outcome == nil)
+    #expect(state.isBattleEnded)
+    #expect(state.outcome == timeout)
+    #expect(BattleState(phase: .ongoing).outcome == nil)
+  }
 }
