@@ -50,40 +50,43 @@ private func reduce(_ state: CombatState<Rules>, _ actions: [CombatAction<Rules>
   actions.reduce(state) { CombatReducer(rules: Rules()).reduce(state: $0, action: $1).state }
 }
 
-@Test("The first side starts with two half-turns per living member, and any member may act")
-func testFirstSide() async throws {
-  let state = started()
+@Suite("A turn system defined only in tests")
+struct CombatCustomTurnSystemTests {
+  @Test("The first side starts with two half-turns per living member, and any member may act")
+  func firstSide() {
+    let state = started()
 
-  #expect(state.turns.activeSide == .allies)
-  #expect(state.turns.halfTurnsLeft == 4)
-  #expect(state.awaitingCommand == [knight, mage])
-}
+    #expect(state.turns.activeSide == .allies)
+    #expect(state.turns.halfTurnsLeft == 4)
+    #expect(state.awaitingCommand == [knight, mage])
+  }
 
-@Test("The same combatant may act again while its side has turns left")
-func testActAgain() async throws {
-  let state = reduce(started(), act(.attack(wolf), by: knight))
+  @Test("The same combatant may act again while its side has turns left")
+  func actAgain() {
+    let state = reduce(started(), act(.attack(wolf), by: knight))
 
-  #expect(state.turns.halfTurnsLeft == 2)
-  #expect(state.awaitingCommand == [knight, mage])
-}
+    #expect(state.turns.halfTurnsLeft == 2)
+    #expect(state.awaitingCommand == [knight, mage])
+  }
 
-@Test("When the side runs out of turns, the other side takes over")
-func testSidesAlternate() async throws {
-  let state = reduce(started(), act(.attack(wolf), by: knight) + act(.attack(wolf), by: knight))
+  @Test("When the side runs out of turns, the other side takes over")
+  func sidesAlternate() {
+    let state = reduce(started(), act(.attack(wolf), by: knight) + act(.attack(wolf), by: knight))
 
-  #expect(state.turns.activeSide == .foes)
-  #expect(state.turns.halfTurnsLeft == 2)
-  #expect(state.awaitingCommand == [wolf])
-}
+    #expect(state.turns.activeSide == .foes)
+    #expect(state.turns.halfTurnsLeft == 2)
+    #expect(state.awaitingCommand == [wolf])
+  }
 
-@Test("Hitting a weakness costs only half a turn")
-func testWeaknessGrantsExtraAction() async throws {
-  let flame = ActiveTimeSampleCommand.cast(.flame, on: .single(wolf))
-  let state = reduce(
-    started(),
-    act(flame, by: mage) + act(flame, by: mage) + act(.attack(wolf), by: knight))
+  @Test("Hitting a weakness costs only half a turn")
+  func weaknessGrantsExtraAction() {
+    let flame = ActiveTimeSampleCommand.cast(.flame, on: .single(wolf))
+    let state = reduce(
+      started(),
+      act(flame, by: mage) + act(flame, by: mage) + act(.attack(wolf), by: knight))
 
-  // 1 + 1 + 2 half-turns: three actions from a budget of two full turns.
-  #expect(state.turns.activeSide == .foes)
-  #expect(state.roster[wolf]!.hp < 200)
+    // 1 + 1 + 2 half-turns: three actions from a budget of two full turns.
+    #expect(state.turns.activeSide == .foes)
+    #expect(state.roster[wolf]!.hp < 200)
+  }
 }
