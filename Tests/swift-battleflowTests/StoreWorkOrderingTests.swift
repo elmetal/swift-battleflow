@@ -77,3 +77,25 @@ func testEffectsFeedActionsBack() async throws {
   #expect(recorder.ids == ["c"])
   #expect(store.state == ["start", "finish"])
 }
+
+@Test("Commands with the same priority run in the order they were emitted")
+@MainActor
+func testEqualPriorityCommandsKeepOrder() async throws {
+  struct Emitter: Reducer {
+    func reduce(state: Int, action: Int) -> Reduction<Int, Int> {
+      let ids = (0..<50).map { "c\($0)" }
+      return Reduction(
+        state: state,
+        commands: [BaseCommand(id: "first", priority: 2)]
+          + ids.map { BaseCommand(id: $0, priority: 1) })
+    }
+  }
+  let store = Store(initialState: 0, reducer: Emitter())
+  let recorder = CommandRecorder()
+  store.commandHandler = { recorder.ids.append($0.id) }
+
+  store.dispatch(0)
+  await store.waitForPendingCommands()
+
+  #expect(recorder.ids == ["first"] + (0..<50).map { "c\($0)" })
+}

@@ -121,7 +121,11 @@ extension Store {
   ///
   /// - Parameter commands: The pending commands to run.
   private func executeCommands(_ commands: [any Command]) async {
-    let sortedCommands = commands.sorted { $0.priority > $1.priority }
+    // Higher priority first; commands with the same priority keep the order
+    // they were emitted in.
+    let sortedCommands = commands.enumerated()
+      .sorted { ($0.element.priority, $1.offset) > ($1.element.priority, $0.offset) }
+      .map(\.element)
 
     for command in sortedCommands {
       await executeCommand(command)

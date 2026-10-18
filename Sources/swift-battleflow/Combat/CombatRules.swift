@@ -47,13 +47,30 @@ public protocol CombatRules: Sendable {
     random: inout Generator
   ) -> [Effect]
 
+  /// Returns the effects that happen when the battle reaches a turn
+  /// boundary, such as poison at the end of a turn.
+  ///
+  /// The turn system decides which boundaries exist. The default returns no
+  /// effects.
+  func effects(
+    at boundary: Turns.Boundary, in state: CombatState<Self>, random: inout Generator
+  ) -> [Effect]
+
   /// Applies an effect to the roster.
   func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>)
 
   /// Returns the outcome when the battle is decided, or `nil` while it goes on.
   ///
-  /// Called after each performed command.
+  /// Called after each performed command and after each boundary's effects.
   func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome?
+}
+
+extension CombatRules {
+  public func effects(
+    at boundary: Turns.Boundary, in state: CombatState<Self>, random: inout Generator
+  ) -> [Effect] {
+    []
+  }
 }
 
 /// Decides who submits commands and who acts next.
@@ -65,6 +82,10 @@ public protocol CombatRules: Sendable {
 public protocol TurnSystem: Sendable, Equatable {
   /// The rules this turn system works with.
   associatedtype Rules: CombatRules
+
+  /// The turn boundaries this turn system reaches, such as the end of a
+  /// combatant's turn or of a round.
+  associatedtype Boundary: Sendable, Equatable = Never
 
   /// Creates a turn system for a battle that has not started.
   init()
@@ -100,6 +121,22 @@ public protocol TurnSystem: Sendable, Equatable {
   /// Lets time pass, for turn systems that depend on time.
   mutating func advanceTime(
     by seconds: Double, in roster: CombatRoster<Rules.Stats>, rules: Rules)
+
+  /// Removes and returns the boundaries reached since the last call, in
+  /// order.
+  ///
+  /// The combat layer calls this after every other turn system method and
+  /// applies the rules' effects for each boundary. Within
+  /// ``CombatAction/performNextAction``, boundaries recorded by
+  /// ``takeNextAction(in:rules:random:)`` are handled before the command, and
+  /// boundaries recorded by ``didPerform(_:by:in:rules:)`` after it.
+  mutating func takeBoundaries() -> [Boundary]
+}
+
+extension TurnSystem where Boundary == Never {
+  public mutating func takeBoundaries() -> [Never] {
+    []
+  }
 }
 
 extension TurnSystem {

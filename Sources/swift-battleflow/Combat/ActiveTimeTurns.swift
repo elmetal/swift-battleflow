@@ -42,6 +42,16 @@ extension ActiveTimeRules {
 /// Time passes only through ``CombatAction/advanceTime(by:)``, so the battle
 /// stays deterministic; drive it from a timer or a game loop.
 public struct ActiveTimeTurns<Rules: ActiveTimeRules>: TurnSystem {
+  /// The boundaries of each combatant's turn.
+  public enum Boundary: Sendable, Equatable {
+    /// A combatant's turn came, before its command runs, even if it can no
+    /// longer act.
+    case turnStarted(CombatantID)
+
+    /// A combatant performed its command.
+    case turnEnded(CombatantID)
+  }
+
   /// A submitted command waiting to run.
   public struct Pending: Sendable, Equatable {
     public let actor: CombatantID
@@ -57,6 +67,8 @@ public struct ActiveTimeTurns<Rules: ActiveTimeRules>: TurnSystem {
 
   /// Submitted commands, in the order they will run.
   public private(set) var pending: [Pending] = []
+
+  private var boundaries: [Boundary] = []
 
   public init() {}
 
@@ -89,7 +101,20 @@ public struct ActiveTimeTurns<Rules: ActiveTimeRules>: TurnSystem {
     }
     let next = pending.removeFirst()
     gauges[next.actor] = 0
+    boundaries.append(.turnStarted(next.actor))
     return (next.actor, next.command)
+  }
+
+  public mutating func didPerform(
+    _ effects: [Rules.Effect], by actor: CombatantID, in roster: CombatRoster<Rules.Stats>,
+    rules: Rules
+  ) {
+    boundaries.append(.turnEnded(actor))
+  }
+
+  public mutating func takeBoundaries() -> [Boundary] {
+    defer { boundaries = [] }
+    return boundaries
   }
 
   public mutating func advanceTime(
