@@ -20,10 +20,11 @@ func testBattleStateParticipants() async throws {
   let heroID = CombatantID("hero")
   let enemyID = CombatantID("enemy")
   let state = BattleState()
-    .withParticipant(BattleParticipant(id: heroID), in: BattleGroupID("left"))
-    .withParticipant(BattleParticipant(id: enemyID), in: BattleGroupID("right"))
+    .withParticipant(heroID, in: BattleGroupID("left"))
+    .withParticipant(enemyID, in: BattleGroupID("right"))
+    .withParticipant(CombatantID("bystander"))
 
-  #expect(state.participants[heroID]?.id == heroID)
+  #expect(state.participants == [heroID, enemyID, CombatantID("bystander")])
   #expect(state.participantIDs(in: BattleGroupID("left")) == Set([heroID]))
   #expect(state.participantIDs(in: BattleGroupID("right")) == Set([enemyID]))
 }

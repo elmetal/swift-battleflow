@@ -51,10 +51,10 @@ func testStoreHistoryAndReset() async throws {
 func testBattleStoreParticipantLookup() async throws {
   let heroID = CombatantID("hero")
   let state = BattleState().withParticipant(
-    BattleParticipant(id: heroID), in: BattleGroupID("players"))
+    heroID, in: BattleGroupID("players"))
   let store = BattleFlow.makeStore(initialState: state)
 
-  #expect(store.participant(for: heroID) == BattleParticipant(id: heroID))
-  #expect(store.participant(for: CombatantID("ghost")) == nil)
+  #expect(store.isParticipant(heroID))
+  #expect(!store.isParticipant(CombatantID("ghost")))
   #expect(store.isParticipant(heroID, in: BattleGroupID("players")))
 }

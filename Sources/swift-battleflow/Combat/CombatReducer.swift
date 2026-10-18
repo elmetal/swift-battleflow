@@ -61,7 +61,7 @@ extension CombatReducer {
     var engineState = state.engineState
     for (side, members) in roster.sides {
       for id in members {
-        engineState = engineState.withParticipant(BattleParticipant(id: id), in: side)
+        engineState = engineState.withParticipant(id, in: side)
       }
     }
 

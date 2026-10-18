@@ -42,22 +42,13 @@ public struct BattleGroupID: Hashable, Sendable, Equatable {
   }
 }
 
-/// Describes a rule-agnostic participant known by the battle engine.
-public struct BattleParticipant: Sendable, Equatable {
-  public let id: CombatantID
-
-  public init(id: CombatantID) {
-    self.id = id
-  }
-}
-
 /// An immutable structure that stores the entire battle state.
 public struct BattleState: Sendable, Equatable {
   /// The current phase of the battle.
   public private(set) var phase: BattlePhase
 
-  /// A lookup table of all engine-level participants.
-  public private(set) var participants: [CombatantID: BattleParticipant]
+  /// The combatants taking part in the battle.
+  public private(set) var participants: Set<CombatantID>
 
   /// Participant groups known to the engine.
   public private(set) var groups: [BattleGroupID: Set<CombatantID>]
@@ -70,7 +61,7 @@ public struct BattleState: Sendable, Equatable {
 
   public init(
     phase: BattlePhase = .preparation,
-    participants: [CombatantID: BattleParticipant] = [:],
+    participants: Set<CombatantID> = [],
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
     currentActor: CombatantID? = nil
@@ -112,15 +103,12 @@ public struct BattleState: Sendable, Equatable {
 
 extension BattleState {
 
-  /// Returns a new state with the provided participant updated or inserted.
-  public func withParticipant(
-    _ participant: BattleParticipant,
-    in group: BattleGroupID? = nil
-  ) -> BattleState {
+  /// Returns a new state that includes the participant, optionally in a group.
+  public func withParticipant(_ id: CombatantID, in group: BattleGroupID? = nil) -> BattleState {
     updating { state in
-      state.participants[participant.id] = participant
+      state.participants.insert(id)
       if let group {
-        state.groups[group, default: []].insert(participant.id)
+        state.groups[group, default: []].insert(id)
       }
     }
   }
