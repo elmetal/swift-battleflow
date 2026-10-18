@@ -13,8 +13,22 @@ public struct JRPGReducer: Reducer {
   /// Reduces actions that belong to the default JRPG rule set.
   ///
   /// Combatant intents are ignored unless the battle is ongoing and every
-  /// referenced combatant exists and is not defeated.
+  /// referenced combatant exists and is not defeated. When an action during
+  /// the battle changes combatants and one side is wiped out, the battle ends
+  /// automatically.
   public func reduce(state: JRPGBattleState, action: JRPGAction) -> Reduction<
+    JRPGBattleState, JRPGAction
+  > {
+    let reduction = reduceAction(state: state, action: action)
+
+    // Starting a battle sets up combatants rather than changing them in play.
+    if case .startBattle = action {
+      return reduction
+    }
+    return resolvingOutcome(of: reduction, from: state)
+  }
+
+  private func reduceAction(state: JRPGBattleState, action: JRPGAction) -> Reduction<
     JRPGBattleState, JRPGAction
   > {
     switch action {
@@ -120,6 +134,42 @@ extension JRPGReducer {
 }
 
 extension JRPGReducer {
+
+  // MARK: - Outcome
+
+  /// Ends the battle when the reduction changed combatants and one side has
+  /// been wiped out.
+  fileprivate func resolvingOutcome(
+    of reduction: Reduction<JRPGBattleState, JRPGAction>,
+    from previousState: JRPGBattleState
+  ) -> Reduction<JRPGBattleState, JRPGAction> {
+
+    let state = reduction.state
+    guard !state.isBattleEnded, state.combatants != previousState.combatants,
+      let result = decidedResult(in: state)
+    else {
+      return reduction
+    }
+
+    let ending = reduceEndBattle(state: state, result: result)
+    return Reduction(
+      state: ending.state,
+      commands: reduction.commands + ending.commands,
+      effects: reduction.effects
+    )
+  }
+
+  /// Returns the result decided by the combatants' state, if any. A side with
+  /// no members never counts as defeated.
+  fileprivate func decidedResult(in state: JRPGBattleState) -> BattleResult? {
+    if !state.enemyIDs.isEmpty && state.aliveEnemies.isEmpty {
+      return .victory
+    }
+    if !state.playerIDs.isEmpty && state.alivePlayers.isEmpty {
+      return .defeat
+    }
+    return nil
+  }
 
   // MARK: - Engine Forwarding
 

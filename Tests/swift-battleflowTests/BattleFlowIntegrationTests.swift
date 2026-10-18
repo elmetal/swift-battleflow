@@ -29,14 +29,13 @@ func testFullBattleFlow() async throws {
   #expect(defeatedGoblin.stats.hp == 0)  // 32 - 18 - 18 = 0 (min)
   #expect(defeatedGoblin.stats.isDefeated == true)
 
-  // 倒れたゴブリンへの攻撃は無視される
-  store.performAttack(attacker: hero.id, target: goblin.id)
-  #expect(store.combatant(for: goblin.id) == defeatedGoblin)
-
-  // 戦闘終了
-  store.endBattle(with: .victory)
+  // 最後の敵を倒したので自動的に勝利する
   #expect(store.currentPhase == .ended(.victory))
   #expect(store.isBattleEnded == true)
+
+  // 戦闘終了後の攻撃は無視される
+  store.performAttack(attacker: hero.id, target: goblin.id)
+  #expect(store.combatant(for: goblin.id) == defeatedGoblin)
 }
 
 @Test("BattleFlow factory methods")
