@@ -7,43 +7,55 @@ private final class CommandRecorder {
   var ids: [String] = []
 }
 
+/// Emits one command named after each action.
+private struct Echo: Reducer {
+  enum Action: String, Sendable, Equatable {
+    case first
+    case second
+  }
+
+  func reduce(state: Int, action: Action) -> Reduction<Int, Action> {
+    Reduction(state: state + 1, commands: [BaseCommand(id: action.rawValue)])
+  }
+}
+
 @Suite("Store work ordering")
 struct StoreWorkOrderingTests {
   @Test("Commands run in dispatch order even when the handler suspends")
   @MainActor
   func commandsRunInDispatchOrder() async throws {
-    let store = BattleStore()
+    let store = Store(initialState: 0, reducer: Echo())
     let recorder = CommandRecorder()
     store.commandHandler = { command in
-      if command.id.hasPrefix("phase_transition") {
+      if command.id == "first" {
         try? await Task.sleep(for: .milliseconds(50))
       }
       recorder.ids.append(command.id)
     }
 
-    store.dispatch([.transitionPhase(.ongoing), .incrementTurn])
+    store.dispatch([.first, .second])
     await store.waitForPendingCommands()
 
-    #expect(recorder.ids == ["phase_transition_ongoing", "turn_advance"])
+    #expect(recorder.ids == ["first", "second"])
   }
 
   @Test("Waiting for pending commands includes commands dispatched while waiting")
   @MainActor
   func waitIncludesLaterDispatches() async throws {
-    let store = BattleStore()
+    let store = Store(initialState: 0, reducer: Echo())
     let recorder = CommandRecorder()
     store.commandHandler = { command in
       try? await Task.sleep(for: .milliseconds(10))
       recorder.ids.append(command.id)
-      if command.id.hasPrefix("phase_transition") {
-        store.dispatch(.incrementTurn)
+      if command.id == "first" {
+        store.dispatch(.second)
       }
     }
 
-    store.dispatch(.transitionPhase(.ongoing))
+    store.dispatch(.first)
     await store.waitForPendingCommands()
 
-    #expect(recorder.ids == ["phase_transition_ongoing", "turn_advance"])
+    #expect(recorder.ids == ["first", "second"])
   }
 
   @Test(

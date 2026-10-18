@@ -95,8 +95,7 @@ struct RosterChangeTests {
         round(shaman: .callForHelp(newcomer)), Array(repeating: .performNextAction, count: 4))
 
       #expect(afterShaman.roster.side(of: newcomer) == .monsters)
-      #expect(afterShaman.engineState.participants.contains(newcomer))
-      #expect(afterShaman.engineState.participantIDs(in: .monsters).contains(newcomer))
+      #expect(afterShaman.roster.members(of: .monsters).contains(newcomer))
       #expect(!afterShaman.turns.order.contains(newcomer))
 
       let nextRound = reduce(afterShaman, [.performNextAction])
@@ -110,7 +109,7 @@ struct RosterChangeTests {
       let state = reduce(round(hero: .banish(goblin)), [.performNextAction])
 
       #expect(state.roster[goblin] == nil)
-      #expect(!state.engineState.participants.contains(goblin))
+      #expect(!state.roster.members(of: .monsters).contains(goblin))
       #expect(state.turns.order == [thief, shaman])
       #expect(state.turns.commands[goblin] == nil)
     }

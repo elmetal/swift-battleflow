@@ -148,8 +148,7 @@ func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>) {
 }
 ```
 
-The combat layer keeps the engine's participants and sides in sync and tells
-the turn system through ``TurnSystem/didChangeRoster(added:removed:in:rules:)``.
+The combat layer tells the turn system through ``TurnSystem/didChangeRoster(added:removed:in:rules:)``.
 With ``RoundBasedTurns``, a combatant that leaves loses its place in the
 current round and newcomers submit commands from the next round. With
 ``ActiveTimeTurns``, newcomers start with their initial gauge and a combatant

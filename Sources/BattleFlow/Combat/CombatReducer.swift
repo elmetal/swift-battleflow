@@ -22,7 +22,7 @@ public struct CombatReducer<Rules: CombatRules>: Reducer {
   private func reduceAction(state: State, action: Action) -> Reduction<State, Action> {
     switch action {
     case .start(let roster):
-      guard state.engineState.phase == .preparation else {
+      guard state.phase == .preparation else {
         return Reduction(state: state)
       }
       return reduceStart(state: state, roster: roster)
@@ -60,7 +60,7 @@ public struct CombatReducer<Rules: CombatRules>: Reducer {
         return Reduction(state: state)
       }
       return Reduction(
-        state: state.with(engineState: state.engineState.withPhase(.ended(outcome))),
+        state: state.with(phase: .ended(outcome)),
         commands: [CombatEvent<Rules>.ended(outcome)])
     }
   }
@@ -71,19 +71,11 @@ extension CombatReducer {
   private func reduceStart(
     state: State, roster: CombatRoster<Rules.Stats>
   ) -> Reduction<State, Action> {
-    var engineState = state.engineState
-    for (side, members) in roster.sides {
-      for id in members {
-        engineState = engineState.withParticipant(id, in: side)
-      }
-    }
-
     var turns = Rules.Turns()
     turns.begin(with: roster, rules: rules)
 
     var progress = Progress(
-      state: state.with(
-        engineState: engineState.withPhase(.ongoing), stats: roster.stats, turns: turns),
+      state: state.with(phase: .ongoing, roster: roster, turns: turns),
       events: [CombatEvent<Rules>.started])
     progress.reachBoundaries(rules: rules)
     return progress.reduction
@@ -101,7 +93,7 @@ extension CombatReducer {
     }
 
     progress.state = progress.state.with(
-      engineState: progress.state.engineState.withCurrentActor(actor))
+      currentActor: actor)
     guard progress.state.roster[actor]?.canAct == true else {
       progress.events.append(CombatEvent<Rules>.skipped(actor: actor))
       return progress.reduction
@@ -154,7 +146,7 @@ private struct Progress<Rules: CombatRules> {
       applied.append(effect)
 
       if let decided = rules.outcome(of: roster) {
-        state = state.with(engineState: state.engineState.withPhase(.ended(decided)))
+        state = state.with(phase: .ended(decided))
         outcome = decided
       } else {
         var random = state.random
@@ -167,28 +159,22 @@ private struct Progress<Rules: CombatRules> {
     return (applied, outcome)
   }
 
-  /// Stores a roster changed by an effect, keeping the engine's participants
-  /// and groups in sync and telling the turn system who joined or left.
+  /// Stores a roster changed by an effect, telling the turn system who
+  /// joined or left.
   private mutating func update(_ roster: CombatRoster<Rules.Stats>, rules: Rules) {
-    let before = Set(state.stats.keys)
+    let before = Set(state.roster.stats.keys)
     let after = Set(roster.stats.keys)
     let added = after.subtracting(before)
     let removed = before.subtracting(after)
     guard !added.isEmpty || !removed.isEmpty else {
-      state = state.with(stats: roster.stats)
+      state = state.with(roster: roster)
       return
     }
 
-    var engineState = state.engineState
-    for id in removed {
-      engineState = engineState.withoutParticipant(id)
-    }
-    for id in added {
-      engineState = engineState.withParticipant(id, in: roster.side(of: id))
-    }
     var turns = state.turns
     turns.didChangeRoster(added: added, removed: removed, in: roster, rules: rules)
-    state = state.with(engineState: engineState, stats: roster.stats, turns: turns)
+    let currentActor = state.currentActor.flatMap { removed.contains($0) ? nil : $0 }
+    state = state.with(roster: roster, currentActor: .some(currentActor), turns: turns)
   }
 
   /// Submits the rules' automatic commands, one at a time in ID order, until
