@@ -1,6 +1,6 @@
 import Testing
 
-@testable import swift_battleflow
+@testable import BattleFlow
 
 private typealias Rules = StatusSampleRules<ScriptedBattleRandomGenerator>
 private typealias Event = CombatEvent<Rules>

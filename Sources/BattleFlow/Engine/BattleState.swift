@@ -1,5 +1,3 @@
-import Foundation
-
 /// Identifies how a battle ended.
 ///
 /// The engine is rule-agnostic, so rule sets define their own outcomes, for
