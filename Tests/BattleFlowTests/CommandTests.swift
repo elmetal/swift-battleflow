@@ -1,6 +1,6 @@
 import Testing
 
-@testable import swift_battleflow
+@testable import BattleFlow
 
 @Suite("Commands and effects")
 struct CommandTests {

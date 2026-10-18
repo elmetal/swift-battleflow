@@ -1,6 +1,6 @@
 import Testing
 
-@testable import swift_battleflow
+@testable import BattleFlow
 
 @Suite("Battle store")
 struct BattleStoreTests {
@@ -32,7 +32,7 @@ struct BattleStoreTests {
   @Test("Store exposes action history as a property and can be reset")
   @MainActor
   func storeHistoryAndReset() {
-    let store = BattleFlow.makeStore()
+    let store = BattleStore()
 
     store.advanceTurn()
     store.advance(to: .ongoing)
@@ -52,7 +52,7 @@ struct BattleStoreTests {
     let heroID = CombatantID("hero")
     let state = BattleState().withParticipant(
       heroID, in: BattleGroupID("players"))
-    let store = BattleFlow.makeStore(initialState: state)
+    let store = BattleStore(initialState: state)
 
     #expect(store.isParticipant(heroID))
     #expect(!store.isParticipant(CombatantID("ghost")))

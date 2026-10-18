@@ -14,17 +14,17 @@ let package = Package(
     products: [
         // Products define the executables and libraries a package produces, making them visible to other packages.
         .library(
-            name: "swift-battleflow",
-            targets: ["swift-battleflow"]),
+            name: "BattleFlow",
+            targets: ["BattleFlow"]),
     ],
     targets: [
         // Targets are the basic building blocks of a package, defining a module or a test suite.
         // Targets can depend on other targets in this package and products from dependencies.
         .target(
-            name: "swift-battleflow"),
+            name: "BattleFlow"),
         .testTarget(
-            name: "swift-battleflowTests",
-            dependencies: ["swift-battleflow"]
+            name: "BattleFlowTests",
+            dependencies: ["BattleFlow"]
         ),
     ]
 )

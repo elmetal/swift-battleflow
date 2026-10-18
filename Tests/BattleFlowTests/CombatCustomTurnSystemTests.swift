@@ -1,6 +1,6 @@
 import Testing
 
-@testable import swift_battleflow
+@testable import BattleFlow
 
 // MARK: - A Turn System Defined Only in Tests
 //

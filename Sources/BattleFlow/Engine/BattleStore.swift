@@ -1,4 +1,3 @@
-import Foundation
 import Observation
 
 /// The central hub of a state-store feature.

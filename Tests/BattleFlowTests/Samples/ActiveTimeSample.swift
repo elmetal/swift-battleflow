@@ -1,4 +1,4 @@
-@testable import swift_battleflow
+@testable import BattleFlow
 
 // MARK: - Active-Time Sample Rule Set
 //

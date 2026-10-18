@@ -1,4 +1,4 @@
-@testable import swift_battleflow
+@testable import BattleFlow
 
 // MARK: - Status Ailment Sample Rule Set
 //

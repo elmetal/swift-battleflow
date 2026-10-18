@@ -1,4 +1,4 @@
-@testable import swift_battleflow
+@testable import BattleFlow
 
 // MARK: - A Custom Turn System Defined Outside the Library
 //
