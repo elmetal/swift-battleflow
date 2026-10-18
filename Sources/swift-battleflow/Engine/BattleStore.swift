@@ -201,12 +201,9 @@ extension BattleStore {
     return state.currentActor
   }
 
-  /// Looks up a participant by identifier.
-  ///
-  /// - Parameter id: The identifier to search for.
-  /// - Returns: The matching participant, or `nil` when not found.
-  public func participant(for id: CombatantID) -> BattleParticipant? {
-    return state.participants[id]
+  /// Returns whether the combatant takes part in the battle.
+  public func isParticipant(_ id: CombatantID) -> Bool {
+    return state.participants.contains(id)
   }
 
   /// Returns whether the participant belongs to the provided group.
@@ -226,7 +223,6 @@ extension BattleStore {
     print("Turn: \(state.turnCount)")
     print("Current Actor: \(state.currentActor?.value ?? "none")")
     print("Participants: \(state.participants.count)")
-    print("Pending Commands: \(state.pendingCommands.count)")
     print("==================")
   }
 

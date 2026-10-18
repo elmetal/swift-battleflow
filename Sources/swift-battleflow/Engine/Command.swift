@@ -10,18 +10,6 @@ public protocol Command: Sendable, Equatable {
   var priority: Int { get }
 }
 
-extension Command {
-  /// Returns whether the other command has the same concrete type and is equal.
-  ///
-  /// Use this to compare type-erased commands such as `any Command` values.
-  public func isEqual(to other: any Command) -> Bool {
-    guard let other = other as? Self else {
-      return false
-    }
-    return self == other
-  }
-}
-
 /// A convenience implementation of ``Command``.
 public struct BaseCommand: Command {
   public let id: String

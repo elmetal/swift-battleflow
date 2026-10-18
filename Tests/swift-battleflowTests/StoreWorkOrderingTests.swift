@@ -21,10 +21,10 @@ func testCommandsRunInDispatchOrder() async throws {
     recorder.ids.append(command.id)
   }
 
-  store.dispatch([.transitionPhase(.actionExecution), .incrementTurn])
+  store.dispatch([.transitionPhase(.ongoing), .incrementTurn])
   await store.waitForPendingCommands()
 
-  #expect(recorder.ids == ["phase_transition_actionExecution", "turn_advance"])
+  #expect(recorder.ids == ["phase_transition_ongoing", "turn_advance"])
 }
 
 @Test("Waiting for pending commands includes commands dispatched while waiting")
@@ -40,10 +40,10 @@ func testWaitIncludesLaterDispatches() async throws {
     }
   }
 
-  store.dispatch(.transitionPhase(.actionExecution))
+  store.dispatch(.transitionPhase(.ongoing))
   await store.waitForPendingCommands()
 
-  #expect(recorder.ids == ["phase_transition_actionExecution", "turn_advance"])
+  #expect(recorder.ids == ["phase_transition_ongoing", "turn_advance"])
 }
 
 @Test(

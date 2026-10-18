@@ -92,6 +92,7 @@ func testStart() async throws {
     state: CombatState(random: ScriptedBattleRandomGenerator([])), action: .start(downed))
 
   #expect(reduction.state.isEnded == false)
+  #expect(reduction.state.engineState.phase == .ongoing)
   #expect(reduction.state.awaitingCommand == [hero, cleric, golem])
   #expect(reduction.state.turns.round == 1)
   #expect(reduction.commands.contains { ($0 as? CombatEvent<Rules>) == .started })

@@ -13,12 +13,13 @@ public struct BattleOutcome: Hashable, Sendable {
   }
 }
 
-/// Represents the current phase of a battle sequence.
+/// Represents the current phase of a battle.
+///
+/// Phases within an ongoing battle, such as selecting commands or waiting for
+/// gauges, depend on the turn system, so turn systems track them themselves.
 public enum BattlePhase: Sendable, Equatable {
-  case preparation  // Battle setup.
-  case turnSelection  // Choosing the next actor.
-  case actionExecution  // Resolving chosen actions.
-  case effectResolution  // Processing pending effects.
+  case preparation  // The battle has not started.
+  case ongoing  // The battle is in progress.
   case ended(BattleOutcome)  // The battle is over with a rule-defined outcome.
 }
 
@@ -41,22 +42,13 @@ public struct BattleGroupID: Hashable, Sendable, Equatable {
   }
 }
 
-/// Describes a rule-agnostic participant known by the battle engine.
-public struct BattleParticipant: Sendable, Equatable {
-  public let id: CombatantID
-
-  public init(id: CombatantID) {
-    self.id = id
-  }
-}
-
 /// An immutable structure that stores the entire battle state.
 public struct BattleState: Sendable, Equatable {
   /// The current phase of the battle.
   public private(set) var phase: BattlePhase
 
-  /// A lookup table of all engine-level participants.
-  public private(set) var participants: [CombatantID: BattleParticipant]
+  /// The combatants taking part in the battle.
+  public private(set) var participants: Set<CombatantID>
 
   /// Participant groups known to the engine.
   public private(set) var groups: [BattleGroupID: Set<CombatantID>]
@@ -67,28 +59,18 @@ public struct BattleState: Sendable, Equatable {
   /// The combatant that is currently acting, if any.
   public private(set) var currentActor: CombatantID?
 
-  /// The participants that still have to act this turn, in order.
-  public private(set) var actionOrder: [CombatantID]
-
-  /// Pending commands awaiting execution.
-  public private(set) var pendingCommands: [any Command]
-
   public init(
     phase: BattlePhase = .preparation,
-    participants: [CombatantID: BattleParticipant] = [:],
+    participants: Set<CombatantID> = [],
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
-    currentActor: CombatantID? = nil,
-    actionOrder: [CombatantID] = [],
-    pendingCommands: [any Command] = []
+    currentActor: CombatantID? = nil
   ) {
     self.phase = phase
     self.participants = participants
     self.groups = groups
     self.turnCount = turnCount
     self.currentActor = currentActor
-    self.actionOrder = actionOrder
-    self.pendingCommands = pendingCommands
   }
 
   /// Indicates whether the battle has reached a terminal phase.
@@ -121,15 +103,12 @@ public struct BattleState: Sendable, Equatable {
 
 extension BattleState {
 
-  /// Returns a new state with the provided participant updated or inserted.
-  public func withParticipant(
-    _ participant: BattleParticipant,
-    in group: BattleGroupID? = nil
-  ) -> BattleState {
+  /// Returns a new state that includes the participant, optionally in a group.
+  public func withParticipant(_ id: CombatantID, in group: BattleGroupID? = nil) -> BattleState {
     updating { state in
-      state.participants[participant.id] = participant
+      state.participants.insert(id)
       if let group {
-        state.groups[group, default: []].insert(participant.id)
+        state.groups[group, default: []].insert(id)
       }
     }
   }
@@ -141,31 +120,11 @@ extension BattleState {
 
   /// Returns a new state that starts the next turn.
   ///
-  /// The turn counter increments, and the current actor and the remaining
-  /// action order are cleared.
+  /// The turn counter increments, and the current actor is cleared.
   public func advancingTurn() -> BattleState {
     updating { state in
       state.turnCount += 1
       state.currentActor = nil
-      state.actionOrder = []
-    }
-  }
-
-  /// Returns a new state with the given action order.
-  ///
-  /// - Precondition: Every ID is a known participant and appears only once.
-  public func withActionOrder(_ order: [CombatantID]) -> BattleState {
-    precondition(
-      order.allSatisfy { participants[$0] != nil }, "Action order must contain only participants.")
-    precondition(Set(order).count == order.count, "Action order must not contain duplicates.")
-    return updating { $0.actionOrder = order }
-  }
-
-  /// Returns a new state whose current actor is the next participant in the
-  /// action order, or `nil` when no participant is left.
-  public func advancingActor() -> BattleState {
-    updating { state in
-      state.currentActor = state.actionOrder.isEmpty ? nil : state.actionOrder.removeFirst()
     }
   }
 
@@ -174,36 +133,4 @@ extension BattleState {
     updating { $0.currentActor = actorID }
   }
 
-  /// Returns a new state with additional pending commands appended.
-  public func appendingCommands(_ commands: [any Command]) -> BattleState {
-    updating { $0.pendingCommands += commands }
-  }
-
-  /// Returns a new state without the first pending command that has the given ID.
-  ///
-  /// The state is returned unchanged when no pending command has the ID.
-  public func removingFirstCommand(withID id: String) -> BattleState {
-    guard let index = pendingCommands.firstIndex(where: { $0.id == id }) else {
-      return self
-    }
-    return updating { _ = $0.pendingCommands.remove(at: index) }
-  }
-
-  /// Returns a new state with all pending commands removed.
-  public func removingAllCommands() -> BattleState {
-    updating { $0.pendingCommands = [] }
-  }
-}
-
-extension BattleState {
-  /// Custom ``Equatable`` implementation.
-  ///
-  /// Pending commands are type-erased, so they are compared element by element
-  /// with ``Command/isEqual(to:)``, which also requires matching concrete types.
-  public static func == (lhs: BattleState, rhs: BattleState) -> Bool {
-    lhs.phase == rhs.phase && lhs.participants == rhs.participants && lhs.groups == rhs.groups
-      && lhs.turnCount == rhs.turnCount && lhs.currentActor == rhs.currentActor
-      && lhs.actionOrder == rhs.actionOrder
-      && lhs.pendingCommands.elementsEqual(rhs.pendingCommands) { $0.isEqual(to: $1) }
-  }
 }

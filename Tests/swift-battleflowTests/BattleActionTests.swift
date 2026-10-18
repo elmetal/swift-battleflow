@@ -9,5 +9,5 @@ func testBattleActionEquality() async throws {
   let heroID = CombatantID("hero")
 
   #expect(BattleAction.updateCurrentActor(heroID) == .updateCurrentActor(heroID))
-  #expect(BattleAction.incrementTurn != .transitionPhase(.turnSelection))
+  #expect(BattleAction.incrementTurn != .transitionPhase(.ongoing))
 }

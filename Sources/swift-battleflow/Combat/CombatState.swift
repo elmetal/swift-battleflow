@@ -28,7 +28,7 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
     random: Rules.Generator
   ) {
     precondition(
-      Set(stats.keys) == Set(engineState.participants.keys),
+      Set(stats.keys) == engineState.participants,
       "Every combatant must be an engine participant, and vice versa.")
     self.engineState = engineState
     self.stats = stats
@@ -43,7 +43,7 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
 
   /// Whether the battle has started and not yet ended.
   public var isOngoing: Bool {
-    engineState.phase != .preparation && !engineState.isBattleEnded
+    engineState.phase == .ongoing
   }
 
   /// Whether the battle has ended.

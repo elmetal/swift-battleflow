@@ -15,25 +15,27 @@ func testBattleStateCreation() async throws {
   #expect(state.groups.isEmpty)
 }
 
-@Test("BattleState appends and removes pending commands")
-func testBattleStateCommandTransforms() async throws {
-  let state = BattleState()
-    .appendingCommands([BaseCommand(id: "a")])
-    .appendingCommands([BaseCommand(id: "b")])
-  #expect(state.pendingCommands.map(\.id) == ["a", "b"])
-
-  #expect(state.removingAllCommands().pendingCommands.isEmpty)
-}
-
 @Test("BattleState manages participants and groups")
 func testBattleStateParticipants() async throws {
   let heroID = CombatantID("hero")
   let enemyID = CombatantID("enemy")
   let state = BattleState()
-    .withParticipant(BattleParticipant(id: heroID), in: BattleGroupID("left"))
-    .withParticipant(BattleParticipant(id: enemyID), in: BattleGroupID("right"))
+    .withParticipant(heroID, in: BattleGroupID("left"))
+    .withParticipant(enemyID, in: BattleGroupID("right"))
+    .withParticipant(CombatantID("bystander"))
 
-  #expect(state.participants[heroID]?.id == heroID)
+  #expect(state.participants == [heroID, enemyID, CombatantID("bystander")])
   #expect(state.participantIDs(in: BattleGroupID("left")) == Set([heroID]))
   #expect(state.participantIDs(in: BattleGroupID("right")) == Set([enemyID]))
+}
+
+@Test("Battles go from preparation to ongoing to ended")
+func testBattlePhases() async throws {
+  #expect(BattleState().isBattleEnded == false)
+  #expect(BattleState(phase: .ongoing).isBattleEnded == false)
+  #expect(BattleState(phase: .ongoing).outcome == nil)
+
+  let ended = BattleState(phase: .ended(BattleOutcome("test.over")))
+  #expect(ended.isBattleEnded)
+  #expect(ended.outcome == BattleOutcome("test.over"))
 }
