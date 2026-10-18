@@ -48,7 +48,9 @@ jobs:
           <a href="documentation/battleflow/">BattleFlow documentation</a>
           EOF
 
-      - uses: actions/upload-pages-artifact@v5
+      # Pull requests only check that the documentation builds.
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
         with:
           path: .build/docs
 
