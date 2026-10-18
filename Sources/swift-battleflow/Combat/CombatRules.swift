@@ -70,13 +70,35 @@ public protocol CombatRules: Sendable {
   /// Applies an effect to the roster.
   func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>)
 
+  /// Reacts to an effect that was just applied.
+  ///
+  /// Use the queue to add effects that run next (``EffectQueue/prepend(_:)``)
+  /// or after everything already waiting (``EffectQueue/append(_:)``), or to
+  /// schedule effects for a turn boundary. Reactions to reactions are allowed;
+  /// make sure chains end. The default does nothing.
+  ///
+  /// - Parameters:
+  ///   - effect: The effect that was applied.
+  ///   - state: The state after the effect was applied.
+  ///   - queue: The effects waiting to be applied, and the scheduled ones.
+  ///   - random: The battle's generator.
+  func react(
+    to effect: Effect, in state: CombatState<Self>, queue: inout EffectQueue<Self>,
+    random: inout Generator)
+
   /// Returns the outcome when the battle is decided, or `nil` while it goes on.
   ///
-  /// Called after each performed command and after each boundary's effects.
+  /// Called after every applied effect; once it returns an outcome, the
+  /// remaining effects are dropped.
   func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome?
 }
 
 extension CombatRules {
+  public func react(
+    to effect: Effect, in state: CombatState<Self>, queue: inout EffectQueue<Self>,
+    random: inout Generator
+  ) {}
+
   public func automaticCommand(
     for actor: CombatantID, in state: CombatState<Self>, random: inout Generator
   ) -> Command? {

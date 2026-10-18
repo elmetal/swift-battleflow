@@ -110,16 +110,16 @@ extension CombatReducer {
     random = progress.state.random
     let effects = rules.resolve(command, by: actor, in: progress.state, random: &random)
     progress.state = progress.state.with(random: random)
-    progress.apply(effects, rules: rules)
+    let result = progress.run(effects, rules: rules)
     progress.events.append(
-      CombatEvent<Rules>.performed(actor: actor, command: command, effects: effects))
-    progress.decideOutcome(rules: rules)
-    guard progress.state.isOngoing else {
+      CombatEvent<Rules>.performed(actor: actor, command: command, effects: result.applied))
+    if let outcome = result.outcome {
+      progress.events.append(CombatEvent<Rules>.ended(outcome))
       return progress.reduction
     }
 
     turns = progress.state.turns
-    turns.didPerform(effects, by: actor, in: progress.state.roster, rules: rules)
+    turns.didPerform(result.applied, by: actor, in: progress.state.roster, rules: rules)
     progress.state = progress.state.with(turns: turns)
     progress.reachBoundaries(rules: rules)
     return progress.reduction
@@ -135,22 +135,36 @@ private struct Progress<Rules: CombatRules> {
     Reduction(state: state, commands: events)
   }
 
-  /// Applies effects to the roster.
-  mutating func apply(_ effects: [Rules.Effect], rules: Rules) {
-    var roster = state.roster
-    for effect in effects {
-      rules.apply(effect, to: &roster)
-    }
-    state = state.with(stats: roster.stats)
-  }
+  /// Applies effects one at a time, letting the rules react to each, until
+  /// the queue is empty or the battle is decided.
+  ///
+  /// - Returns: The effects that were applied, in order, and the outcome if
+  ///   the battle was decided.
+  mutating func run(
+    _ effects: [Rules.Effect], rules: Rules
+  ) -> (applied: [Rules.Effect], outcome: BattleOutcome?) {
+    var queue = EffectQueue<Rules>(effects, scheduled: state.scheduledEffects)
+    var applied: [Rules.Effect] = []
+    var outcome: BattleOutcome?
 
-  /// Ends the battle if the rules decide it.
-  mutating func decideOutcome(rules: Rules) {
-    guard let outcome = rules.outcome(of: state.roster) else {
-      return
+    while outcome == nil, let effect = queue.popNext() {
+      var roster = state.roster
+      rules.apply(effect, to: &roster)
+      state = state.with(stats: roster.stats)
+      applied.append(effect)
+
+      if let decided = rules.outcome(of: roster) {
+        state = state.with(engineState: state.engineState.withPhase(.ended(decided)))
+        outcome = decided
+      } else {
+        var random = state.random
+        rules.react(to: effect, in: state, queue: &queue, random: &random)
+        state = state.with(random: random)
+      }
     }
-    state = state.with(engineState: state.engineState.withPhase(.ended(outcome)))
-    events.append(CombatEvent<Rules>.ended(outcome))
+
+    state = state.with(scheduledEffects: queue.scheduled)
+    return (applied, outcome)
   }
 
   /// Submits the rules' automatic commands, one at a time in ID order, until
@@ -197,10 +211,16 @@ private struct Progress<Rules: CombatRules> {
       }
       var random = state.random
       let effects = rules.effects(at: boundary, in: state, random: &random)
-      state = state.with(random: random)
-      apply(effects, rules: rules)
-      events.append(CombatEvent<Rules>.boundary(boundary, effects: effects))
-      decideOutcome(rules: rules)
+      var schedule = EffectQueue<Rules>([], scheduled: state.scheduledEffects)
+      let due = schedule.reach(boundary)
+      state = state.with(random: random, scheduledEffects: schedule.scheduled)
+
+      // The rules' effects for the boundary run first, then scheduled ones.
+      let result = run(effects + due, rules: rules)
+      events.append(CombatEvent<Rules>.boundary(boundary, effects: result.applied))
+      if let outcome = result.outcome {
+        events.append(CombatEvent<Rules>.ended(outcome))
+      }
     }
   }
 }

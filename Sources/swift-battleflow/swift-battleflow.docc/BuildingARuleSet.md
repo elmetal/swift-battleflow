@@ -129,6 +129,53 @@ func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
 }
 ```
 
+## React to Effects
+
+The combat layer applies effects one at a time and calls
+``CombatRules/react(to:in:queue:random:)`` after each one. Use the
+``EffectQueue`` to decide where new effects go:
+
+- ``EffectQueue/prepend(_:)`` runs an effect next, before everything already
+  waiting, for reactions that happen at once.
+- ``EffectQueue/append(_:)`` runs an effect after everything already waiting,
+  for reactions that come afterwards, such as a counterattack.
+- ``EffectQueue/schedule(_:at:occurrence:)`` queues an effect when the turn
+  system reaches a boundary for the n-th time, and
+  ``EffectQueue/cancelScheduled(where:)`` drops scheduled effects again.
+
+```swift
+func react(
+  to effect: Effect, in state: CombatState<Self>, queue: inout EffectQueue<Self>,
+  random: inout Generator
+) {
+  switch effect {
+  case .damage(let target, _, let source, let isCounter):
+    guard let defender = state.roster[target], defender.canAct else { return }
+    if !defender.isEnraged && defender.hp * 2 <= defender.maxHP {
+      queue.prepend(.enrage(target))
+    }
+    if defender.counter > 0 && !isCounter {
+      queue.append(.damage(source, amount: defender.counter, source: target, isCounter: true))
+    }
+  case .cursed(let target):
+    queue.schedule(.collapse(target), at: .turnEnded(target), occurrence: 2)
+  case .lifted(let target):
+    queue.cancelScheduled { $0.effect == .collapse(target) }
+  default:
+    break
+  }
+}
+```
+
+The outcome is checked after every applied effect; once the battle is
+decided, the remaining effects are dropped. Events report the effects that
+were actually applied, in order, including reactions. At a boundary, the
+rules' effects for it run before the scheduled effects that became due.
+Scheduled effects are part of ``CombatState``, so replays stay deterministic.
+
+Reactions can trigger further reactions, so make sure chains end, for example
+by marking counterattacks so they aren't countered again.
+
 ## Let the Game Choose Commands
 
 For computer-controlled combatants, return a command from
