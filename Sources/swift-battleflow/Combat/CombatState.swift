@@ -17,15 +17,20 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
   /// The random generator, advanced each time a roll is drawn.
   public let random: Rules.Generator
 
+  /// The effects waiting for a turn boundary, in the order they were
+  /// scheduled.
+  public let scheduledEffects: [ScheduledEffect<Rules>]
+
   /// Creates the state of a battle that has not started.
   public init(random: Rules.Generator) {
     self.init(
-      engineState: BattleState(), stats: [:], turns: Rules.Turns(), random: random)
+      engineState: BattleState(), stats: [:], turns: Rules.Turns(), random: random,
+      scheduledEffects: [])
   }
 
   init(
     engineState: BattleState, stats: [CombatantID: Rules.Stats], turns: Rules.Turns,
-    random: Rules.Generator
+    random: Rules.Generator, scheduledEffects: [ScheduledEffect<Rules>]
   ) {
     precondition(
       Set(stats.keys) == engineState.participants,
@@ -34,6 +39,7 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
     self.stats = stats
     self.turns = turns
     self.random = random
+    self.scheduledEffects = scheduledEffects
   }
 
   /// The combatants grouped by side, derived from the engine groups.
@@ -72,10 +78,12 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
 
   func with(
     engineState: BattleState? = nil, stats: [CombatantID: Rules.Stats]? = nil,
-    turns: Rules.Turns? = nil, random: Rules.Generator? = nil
+    turns: Rules.Turns? = nil, random: Rules.Generator? = nil,
+    scheduledEffects: [ScheduledEffect<Rules>]? = nil
   ) -> CombatState {
     CombatState(
       engineState: engineState ?? self.engineState, stats: stats ?? self.stats,
-      turns: turns ?? self.turns, random: random ?? self.random)
+      turns: turns ?? self.turns, random: random ?? self.random,
+      scheduledEffects: scheduledEffects ?? self.scheduledEffects)
   }
 }
