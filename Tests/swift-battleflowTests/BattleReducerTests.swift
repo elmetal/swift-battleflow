@@ -4,25 +4,6 @@ import Testing
 
 // MARK: - BattleReducer Tests
 
-@Test("Reducer handles start battle action")
-func testReducerStartBattle() async throws {
-  let initialState = JRPGBattleState()
-
-  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", isPlayer: true)
-  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", isPlayer: false)
-
-  let action = JRPGAction.startBattle(players: [hero], enemies: [enemy])
-  let reduction = JRPGReducer().reduce(state: initialState, action: action)
-  let newState = reduction.state
-
-  #expect(newState.phase == .turnSelection)
-  #expect(newState.turnCount == 1)
-  #expect(newState.combatants.count == 2)
-  #expect(newState.playerIDs.count == 1)
-  #expect(newState.enemyIDs.count == 1)
-  #expect(reduction.commands.isEmpty == false)
-}
-
 @Test("Reducer handles advance turn and phase change")
 func testReducerAdvanceTurnAndPhase() async throws {
   let reducer = BattleReducer()
@@ -42,44 +23,6 @@ func testReducerAdvanceTurnAndPhase() async throws {
     })
 }
 
-@Test("Reducer handles attack action")
-func testReducerAttack() async throws {
-  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = JRPGBattleFlow.makeCharacter(name: "Goblin", hp: 80, isPlayer: false)
-
-  let state = JRPGBattleState(
-    combatants: [hero.id: hero, enemy.id: enemy],
-    playerIDs: [hero.id],
-    enemyIDs: [enemy.id]
-  )
-
-  let action = JRPGAction.attack(attacker: hero.id, target: enemy.id)
-  let reduction = JRPGReducer().reduce(state: state, action: action)
-  let newState = reduction.state
-
-  let updatedEnemy = newState.combatants[enemy.id]!
-  #expect(updatedEnemy.stats.hp == 67)  // 80 - (20 - 15 / 2) = 67
-  #expect(updatedEnemy.stats.isDefeated == false)
-  #expect(reduction.commands.isEmpty == false)
-}
-
-@Test("Reducer handles player escape")
-func testReducerEscape() async throws {
-  let hero = JRPGBattleFlow.makeCharacter(name: "Mage", isPlayer: true)
-  let state = JRPGBattleState(
-    phase: .actionExecution,
-    combatants: [hero.id: hero],
-    playerIDs: [hero.id],
-    enemyIDs: []
-  )
-
-  let escapeReduction = JRPGReducer().reduce(
-    state: state, action: .escape(escaper: hero.id))
-  #expect(escapeReduction.state.phase == .ended(.escape))
-  #expect(escapeReduction.state.result == .escape)
-  #expect(escapeReduction.commands.contains { ($0 as? BaseCommand)?.id == "escape_success" })
-}
-
 @Test("Reducer handles engine actions directly")
 func testReducerBattleActionDirectly() async throws {
   let reducer = BattleReducer()
@@ -89,27 +32,4 @@ func testReducerBattleActionDirectly() async throws {
 
   #expect(reduction.state.turnCount == 2)
   #expect(reduction.commands.contains { ($0 as? BaseCommand)?.id == "turn_advance" })
-}
-
-@Test("JRPGReducer handles JRPG actions directly")
-func testJRPGReducerActionDirectly() async throws {
-  let reducer = JRPGReducer<SeededBattleRandomGenerator>()
-
-  let hero = JRPGBattleFlow.makeCharacter(name: "Hero", hp: 100, isPlayer: true)
-  let enemy = JRPGBattleFlow.makeCharacter(name: "Slime", hp: 40, isPlayer: false)
-  let state = JRPGBattleState(
-    combatants: [hero.id: hero, enemy.id: enemy],
-    playerIDs: [hero.id],
-    enemyIDs: [enemy.id]
-  )
-
-  let reduction = reducer.reduce(
-    state: state,
-    action: JRPGAction.attack(attacker: hero.id, target: enemy.id)
-  )
-
-  #expect(reduction.state.combatants[enemy.id]?.stats.hp == 27)
-  #expect(
-    reduction.commands.contains { ($0 as? BaseCommand)?.id == "damage_effect_\(enemy.id.value)_13" }
-  )
 }

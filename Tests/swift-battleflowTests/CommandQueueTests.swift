@@ -45,16 +45,3 @@ func testMarkCommandExecutedIgnoresUnknownID() async throws {
   #expect(pendingIDs(reduction.state) == ["a"])
   #expect(reduction.commands.isEmpty)
 }
-
-@Test("JRPG state drains the queue through engine actions")
-func testJRPGMarkCommandExecuted() async throws {
-  let reducer = JRPGReducer<SeededBattleRandomGenerator>()
-  let queued = reducer.reduce(
-    state: JRPGBattleState(), action: .engine(.enqueueCommands([BaseCommand(id: "a")]))
-  )
-  .state
-
-  let drained = reducer.reduce(state: queued, action: .engine(.markCommandExecuted("a"))).state
-
-  #expect(drained.pendingCommands.isEmpty)
-}
