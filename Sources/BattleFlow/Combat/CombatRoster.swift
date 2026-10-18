@@ -20,11 +20,6 @@ public struct CombatRoster<Stats: CombatantStats>: Sendable, Equatable {
     self.sides = sides.mapValues { Set($0.keys) }
   }
 
-  init(stats: [CombatantID: Stats], sides: [BattleGroupID: Set<CombatantID>]) {
-    self.stats = stats
-    self.sides = sides
-  }
-
   /// Returns the stats of a combatant, or `nil` if it is not in the battle.
   public subscript(id: CombatantID) -> Stats? {
     stats[id]
