@@ -29,6 +29,15 @@ func testEffectProducesAction() async throws {
   #expect(action == .increment)
 }
 
+@Test("Effect.map transforms the produced action")
+func testEffectMap() async throws {
+  let effect = Effect<TestAction>.send(.increment).map { String(describing: $0) }
+  #expect(await effect.run() == "increment")
+
+  let none = Effect<TestAction>.none.map { String(describing: $0) }
+  #expect(await none.run() == nil)
+}
+
 @Test("Store dispatches actions produced by effects", .timeLimit(.minutes(1)))
 @MainActor
 func testStoreDispatchesEffectActions() async throws {

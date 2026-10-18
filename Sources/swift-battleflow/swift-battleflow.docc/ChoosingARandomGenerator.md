@@ -8,19 +8,30 @@ Reducers are pure functions: reducing the same state with the same action
 always gives the same result. That is what lets you replay a battle from its
 action history and write tests that expect exact values.
 
-Randomness keeps this property by living in the state. A battle state such as
-``JRPGBattleState`` holds a ``BattleRandomGenerator`` *value*. When the reducer
-needs a roll, it draws from a copy of the generator and returns the advanced
-generator in the new state:
+Randomness keeps this property by living in the state. ``CombatState`` holds a
+``BattleRandomGenerator`` *value*. Your rules draw rolls from it in
+``CombatRules/resolve(_:by:in:random:)``, and the combat layer stores the
+advanced generator in the new state:
 
 ```swift
-var random = state.random
-let roll = random.nextRoll()  // A Double in 0..<1.
-let newState = state.withRandom(random)
+func resolve(
+  _ command: Command, by actor: CombatantID, in state: CombatState<Self>,
+  random: inout Generator
+) -> [Effect] {
+  let roll = random.nextRoll()  // A Double in 0..<1.
+  // ...
+}
 ```
 
 Because the generator is part of the state, the same state always yields the
-same rolls.
+same rolls. Make your rules generic over the generator so that a game and its
+tests can use different ones:
+
+```swift
+struct MyRules<Generator: BattleRandomGenerator>: RoundBasedRules {
+  // ...
+}
+```
 
 ## Use a Provided Generator
 
@@ -29,16 +40,16 @@ same rolls.
 ``SeededBattleRandomGenerator`` implements SplitMix64. The algorithm is fixed,
 so a seed reproduces the same battle on every platform and Swift version.
 
-- `JRPGBattleState()` and `JRPGBattleStore()` use seed `0`, so every run plays
-  out the same way. That suits tests and demos, not a shipping game.
-- ``JRPGBattleFlow/makeStore()`` seeds the generator from the system, so every
-  battle differs.
+A fixed seed makes every run play out the same way, which suits tests and
+demos. For battles that differ, seed the generator from the system; see
+<doc:ChoosingARandomGenerator#Seed-a-Generator-from-the-System>.
 
 To replay, resume, or synchronize a battle, store the seed and pass it back:
 
 ```swift
-let store = JRPGBattleFlow.makeStore(
-  initialState: JRPGBattleState(random: SeededBattleRandomGenerator(seed: save.battleSeed)))
+let store = CombatStore(
+  initialState: CombatState(random: SeededBattleRandomGenerator(seed: save.battleSeed)),
+  rules: MyRules())
 ```
 
 ### Scripted Generator
@@ -47,7 +58,8 @@ let store = JRPGBattleFlow.makeStore(
 in tests to make a specific outcome happen:
 
 ```swift
-let state = JRPGBattleState(random: ScriptedBattleRandomGenerator([0.99, 0.01]))
+let state = CombatState<MyRules<ScriptedBattleRandomGenerator>>(
+  random: ScriptedBattleRandomGenerator([0.99, 0.01]))
 ```
 
 Every roll must be in `0..<1`, and drawing more rolls than you provided stops
@@ -98,14 +110,15 @@ Instead, call it **outside** the reducer and turn its output into a value.
 ### Seed a Generator from the System
 
 Draw a seed once, when the battle starts, and keep the rest of the battle
-deterministic. This is what ``JRPGBattleFlow/makeStore()`` does:
+deterministic:
 
 ```swift
 var system = SystemRandomNumberGenerator()
 let seed = system.next()
 
-let store = JRPGBattleFlow.makeStore(
-  initialState: JRPGBattleState(random: SeededBattleRandomGenerator(seed: seed)))
+let store = CombatStore(
+  initialState: CombatState(random: SeededBattleRandomGenerator(seed: seed)),
+  rules: MyRules())
 
 // Save `seed` with the action history to replay the battle later.
 ```

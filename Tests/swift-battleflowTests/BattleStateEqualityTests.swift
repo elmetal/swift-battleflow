@@ -36,11 +36,3 @@ func testDifferentCommandTypes() async throws {
 
   #expect(lhs != rhs)
 }
-
-@Test("JRPGBattleState equality compares pending commands")
-func testJRPGStateComparesPendingCommands() async throws {
-  let lhs = JRPGBattleState(pendingCommands: [BaseCommand(id: "a")])
-  let rhs = JRPGBattleState(pendingCommands: [BaseCommand(id: "b")])
-
-  #expect(lhs != rhs)
-}
