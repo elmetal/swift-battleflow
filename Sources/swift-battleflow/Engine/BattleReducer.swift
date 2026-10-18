@@ -31,12 +31,6 @@ public struct BattleReducer: Reducer {
     case .updateCurrentActor(let actorID):
       return reduceUpdateCurrentActor(state: state, actorID: actorID)
 
-    case .scheduleActions(let order):
-      return Reduction(state: state.withActionOrder(order))
-
-    case .advanceActor:
-      return Reduction(state: state.advancingActor())
-
     }
   }
 }

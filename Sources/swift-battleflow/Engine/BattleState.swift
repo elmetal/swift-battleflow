@@ -68,23 +68,18 @@ public struct BattleState: Sendable, Equatable {
   /// The combatant that is currently acting, if any.
   public private(set) var currentActor: CombatantID?
 
-  /// The participants that still have to act this turn, in order.
-  public private(set) var actionOrder: [CombatantID]
-
   public init(
     phase: BattlePhase = .preparation,
     participants: [CombatantID: BattleParticipant] = [:],
     groups: [BattleGroupID: Set<CombatantID>] = [:],
     turnCount: Int = 0,
-    currentActor: CombatantID? = nil,
-    actionOrder: [CombatantID] = []
+    currentActor: CombatantID? = nil
   ) {
     self.phase = phase
     self.participants = participants
     self.groups = groups
     self.turnCount = turnCount
     self.currentActor = currentActor
-    self.actionOrder = actionOrder
   }
 
   /// Indicates whether the battle has reached a terminal phase.
@@ -137,31 +132,11 @@ extension BattleState {
 
   /// Returns a new state that starts the next turn.
   ///
-  /// The turn counter increments, and the current actor and the remaining
-  /// action order are cleared.
+  /// The turn counter increments, and the current actor is cleared.
   public func advancingTurn() -> BattleState {
     updating { state in
       state.turnCount += 1
       state.currentActor = nil
-      state.actionOrder = []
-    }
-  }
-
-  /// Returns a new state with the given action order.
-  ///
-  /// - Precondition: Every ID is a known participant and appears only once.
-  public func withActionOrder(_ order: [CombatantID]) -> BattleState {
-    precondition(
-      order.allSatisfy { participants[$0] != nil }, "Action order must contain only participants.")
-    precondition(Set(order).count == order.count, "Action order must not contain duplicates.")
-    return updating { $0.actionOrder = order }
-  }
-
-  /// Returns a new state whose current actor is the next participant in the
-  /// action order, or `nil` when no participant is left.
-  public func advancingActor() -> BattleState {
-    updating { state in
-      state.currentActor = state.actionOrder.isEmpty ? nil : state.actionOrder.removeFirst()
     }
   }
 
