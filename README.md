@@ -145,6 +145,11 @@ The DocC articles go further:
 The tests include complete sample rule sets: round-based, active-time, status
 ailments, reactions, and a custom turn system.
 
+## Release Notes
+
+Changes in each version, including breaking changes, are listed on
+[GitHub Releases](https://github.com/elmetal/swift-battleflow/releases).
+
 ## License
 
 See [LICENSE](LICENSE).
