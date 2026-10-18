@@ -73,19 +73,17 @@ enum ActiveTimeSampleEffect: Sendable, Equatable {
   case notEnoughMP
 }
 
-struct ActiveTimeSampleRules<Generator: BattleRandomGenerator>: ActiveTimeRules {
+/// The sample's calculations, shared by every rule set that uses its stats,
+/// commands, and effects.
+enum SpellSampleMechanics {
   typealias Stats = ActiveTimeSampleStats
   typealias Command = ActiveTimeSampleCommand
   typealias Effect = ActiveTimeSampleEffect
-  typealias Turns = ActiveTimeTurns<Self>
 
-  var mode: ActiveTimeMode = .active
-
-  func resolve(
-    _ command: Command, by actor: CombatantID, in state: CombatState<Self>,
+  static func resolve<Generator: BattleRandomGenerator>(
+    _ command: Command, by actor: CombatantID, in roster: CombatRoster<Stats>,
     random: inout Generator
   ) -> [Effect] {
-    let roster = state.roster
     let caster = roster[actor]!
     switch command {
     case .attack(let target):
@@ -116,7 +114,7 @@ struct ActiveTimeSampleRules<Generator: BattleRandomGenerator>: ActiveTimeRules 
     }
   }
 
-  private func targets(
+  private static func targets(
     of target: SampleTarget, by actor: CombatantID, in roster: CombatRoster<Stats>
   ) -> [CombatantID] {
     switch target {
@@ -128,7 +126,7 @@ struct ActiveTimeSampleRules<Generator: BattleRandomGenerator>: ActiveTimeRules 
     }
   }
 
-  func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>) {
+  static func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>) {
     switch effect {
     case .damage(let id, let amount, _):
       roster.update(id) { $0.hp = max(0, $0.hp - amount) }
@@ -141,10 +139,34 @@ struct ActiveTimeSampleRules<Generator: BattleRandomGenerator>: ActiveTimeRules 
     }
   }
 
-  func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
+  static func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
     if roster.members(of: .foes).allSatisfy({ !roster[$0]!.canAct }) { return .alliesWin }
     if roster.members(of: .allies).allSatisfy({ !roster[$0]!.canAct }) { return .alliesLose }
     return nil
+  }
+}
+
+struct ActiveTimeSampleRules<Generator: BattleRandomGenerator>: ActiveTimeRules {
+  typealias Stats = ActiveTimeSampleStats
+  typealias Command = ActiveTimeSampleCommand
+  typealias Effect = ActiveTimeSampleEffect
+  typealias Turns = ActiveTimeTurns<Self>
+
+  var mode: ActiveTimeMode = .active
+
+  func resolve(
+    _ command: Command, by actor: CombatantID, in state: CombatState<Self>,
+    random: inout Generator
+  ) -> [Effect] {
+    SpellSampleMechanics.resolve(command, by: actor, in: state.roster, random: &random)
+  }
+
+  func apply(_ effect: Effect, to roster: inout CombatRoster<Stats>) {
+    SpellSampleMechanics.apply(effect, to: &roster)
+  }
+
+  func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
+    SpellSampleMechanics.outcome(of: roster)
   }
 
   /// A speed of 50 fills the gauge in two seconds.
