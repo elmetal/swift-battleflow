@@ -33,9 +33,9 @@ struct MyRules<Generator: BattleRandomGenerator>: RoundBasedRules {
 }
 ```
 
-## Use a Provided Generator
+### Use a Provided Generator
 
-### Seeded Generator
+#### Seeded Generator
 
 ``SeededBattleRandomGenerator`` implements SplitMix64. The algorithm is fixed,
 so a seed reproduces the same battle on every platform and Swift version.
@@ -52,7 +52,7 @@ let store = CombatStore(
   rules: MyRules())
 ```
 
-### Scripted Generator
+#### Scripted Generator
 
 ``ScriptedBattleRandomGenerator`` returns predetermined rolls in order. Use it
 in tests to make a specific outcome happen:
@@ -65,7 +65,7 @@ let state = CombatState<MyRules<ScriptedBattleRandomGenerator>>(
 Every roll must be in `0..<1`, and drawing more rolls than you provided stops
 the program, so a test that needs more randomness than expected fails loudly.
 
-## Write Your Own Generator
+### Write Your Own Generator
 
 Any type can be a battle generator if it is a **value**:
 
@@ -93,7 +93,7 @@ struct ServerDealtRolls: BattleRandomGenerator {
 The synthesized `Equatable` conformance compares the remaining rolls, so equal
 generators produce equal rolls.
 
-## Effects Are Not Generators
+### Effects Are Not Generators
 
 `SystemRandomNumberGenerator` asks the operating system for new random bits on
 every call. It has no stored state, so the same battle state would produce
@@ -107,7 +107,7 @@ equal rolls.
 
 Instead, call it **outside** the reducer and turn its output into a value.
 
-### Seed a Generator from the System
+#### Seed a Generator from the System
 
 Draw a seed once, when the battle starts, and keep the rest of the battle
 deterministic:
@@ -123,7 +123,7 @@ let store = CombatStore(
 // Save `seed` with the action history to replay the battle later.
 ```
 
-### Draw Rolls from the System in Advance
+#### Draw Rolls from the System in Advance
 
 If every roll must come from the system, draw them before the battle and store
 them in a value-type generator:

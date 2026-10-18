@@ -19,7 +19,7 @@ layer therefore splits the work:
 
 The library contains no stats, formulas, or command kinds of its own.
 
-## Define Stats
+### Define Stats
 
 Stats are a value type that conforms to ``CombatantStats``. The only thing the
 library reads is ``CombatantStats/canAct``, so you decide what keeps a
@@ -54,7 +54,7 @@ let roster = CombatRoster(sides: [
 ])
 ```
 
-## Define Commands and Effects
+### Define Commands and Effects
 
 A command is what a combatant chooses to do; an effect is a result of
 resolving it. Both are your own `Equatable` types, so they can carry exactly
@@ -75,7 +75,7 @@ enum Effect: Sendable, Equatable {
 }
 ```
 
-## Resolve Commands
+### Resolve Commands
 
 ``CombatRules/resolve(_:by:in:random:)`` is your calculation pipeline. It
 receives the command, its actor, the current state, and the battle's random
@@ -105,7 +105,7 @@ Draw randomness only from `random`. The generator is stored in the state, so
 the same state and command always resolve the same way. See
 <doc:ChoosingARandomGenerator>.
 
-## Apply Effects and Decide the Outcome
+### Apply Effects and Decide the Outcome
 
 ``CombatRules/apply(_:to:)`` changes the roster for one effect, and
 ``CombatRules/outcome(of:)`` returns a ``BattleOutcome`` once the battle is
@@ -129,7 +129,7 @@ func outcome(of roster: CombatRoster<Stats>) -> BattleOutcome? {
 }
 ```
 
-## Change Combatants During a Battle
+### Change Combatants During a Battle
 
 Summons, reinforcements, and combatants that flee or are banished change who
 is in the battle. Express them as effects, and in
@@ -161,7 +161,7 @@ can, for example, end the battle as an escape when the whole party has fled.
 Cancel scheduled effects that target a combatant that left if they no longer
 make sense.
 
-## React to Effects
+### React to Effects
 
 The combat layer applies effects one at a time and calls
 ``CombatRules/react(to:in:queue:random:)`` after each one. Use the
@@ -208,7 +208,7 @@ Scheduled effects are part of ``CombatState``, so replays stay deterministic.
 Reactions can trigger further reactions, so make sure chains end, for example
 by marking counterattacks so they aren't countered again.
 
-## Let the Game Choose Commands
+### Let the Game Choose Commands
 
 For computer-controlled combatants, return a command from
 ``CombatRules/automaticCommand(for:in:random:)``. After every action, the
@@ -235,7 +235,7 @@ seed and the players' actions. If your AI runs asynchronously, for example on a
 server, keep returning `nil` and dispatch ``CombatAction/submit(_:by:)`` when
 its decision arrives.
 
-## React to Turn Boundaries
+### React to Turn Boundaries
 
 Some effects don't come from a command: poison that hurts at the end of a
 turn, regeneration, buffs that expire, sleep that wears off. Return them from
@@ -264,12 +264,12 @@ The combat layer applies these effects like any other, emits a
 so poison can decide a battle. A turn's start is handled before its command,
 so an effect there can, for example, wake a combatant up in time to act.
 
-## Choose a Turn System
+### Choose a Turn System
 
 A turn system decides who may submit a command and who acts next. Pick one by
 setting the rules' `Turns` type, and provide what that turn system asks for.
 
-### Round-Based Turns
+#### Round-Based Turns
 
 With ``RoundBasedTurns``, every combatant that can act submits a command, then
 the round's commands run by priority and initiative. Conform to
@@ -293,7 +293,7 @@ struct MyRules<Generator: BattleRandomGenerator>: RoundBasedRules {
 }
 ```
 
-### Active-Time Turns
+#### Active-Time Turns
 
 With ``ActiveTimeTurns``, every combatant fills a gauge over time and submits a
 command when it is full; submitted commands run first come, first served.
@@ -315,7 +315,7 @@ struct MyRules<Generator: BattleRandomGenerator>: ActiveTimeRules {
 Time passes only when you dispatch ``CombatAction/advanceTime(by:)``, for
 example from a game loop, so the battle stays deterministic.
 
-### Your Own Turn System
+#### Your Own Turn System
 
 If neither fits, conform a value type to ``TurnSystem``. Declare what you need
 from the rules in a protocol that refines ``CombatRules``, and implement:
@@ -348,7 +348,7 @@ struct SideTurns<Rules: SideTurnRules>: TurnSystem {
 The library's tests define exactly this turn system without any change to the
 library.
 
-## Run the Battle
+### Run the Battle
 
 Create a ``CombatStore`` with an initial state and your rules, then start the
 battle, submit commands, and perform them:
