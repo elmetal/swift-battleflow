@@ -1,0 +1,69 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  # Let a deployment to Pages finish; superseded pull request builds can stop.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build symbol graphs
+        run: |
+          swift build --target BattleFlow --scratch-path .build/docs-build \
+            -Xswiftc -emit-symbol-graph \
+            -Xswiftc -emit-symbol-graph-dir -Xswiftc "$PWD/.build/symbol-graphs"
+
+      - name: Build documentation
+        run: |
+          xcrun docc convert Sources/BattleFlow/BattleFlow.docc \
+            --additional-symbol-graph-dir .build/symbol-graphs \
+            --fallback-display-name BattleFlow \
+            --fallback-bundle-identifier com.github.elmetal.swift-battleflow \
+            --transform-for-static-hosting \
+            --hosting-base-path swift-battleflow \
+            --warnings-as-errors \
+            --output-path .build/docs
+
+      - name: Redirect the site root to the module page
+        run: |
+          cat > .build/docs/index.html <<'EOF'
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=documentation/battleflow/">
+          <link rel="canonical" href="documentation/battleflow/">
+          <title>BattleFlow</title>
+          <a href="documentation/battleflow/">BattleFlow documentation</a>
+          EOF
+
+      # Pull requests only check that the documentation builds.
+      - if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: .build/docs
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
