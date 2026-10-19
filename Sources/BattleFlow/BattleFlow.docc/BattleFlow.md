@@ -80,4 +80,4 @@ Release notes are published on
 - ``Command``
 - ``BaseCommand``
 - ``NoCommand``
-- ``Effect``
+- ``FollowUp``

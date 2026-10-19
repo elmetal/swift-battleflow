@@ -3,7 +3,7 @@ import Observation
 /// The central hub of a state-store feature.
 ///
 /// A store owns state, applies actions through a reducer, executes commands, and
-/// starts asynchronous effects that can send follow-up actions.
+/// starts asynchronous follow-ups that can send further actions.
 @Observable
 @MainActor
 public final class Store<R: Reducer> {
@@ -39,8 +39,8 @@ public final class Store<R: Reducer> {
   /// Dispatches a single action synchronously.
   ///
   /// The state updates immediately. The reduction's commands run after the
-  /// commands of every earlier dispatch, and its effects start once those
-  /// commands finish. Effects run concurrently, so their follow-up actions are
+  /// commands of every earlier dispatch, and its follow-ups start once those
+  /// commands finish. Follow-ups run concurrently, so the actions they produce are
   /// dispatched in completion order.
   ///
   /// - Parameter action: The action to process.
@@ -54,14 +54,14 @@ public final class Store<R: Reducer> {
     lastWork = Task {
       await previousWork?.value
       await executeCommands(reduction.commands)
-      startEffects(reduction.effects)
+      startFollowUps(reduction.followUps)
     }
   }
 
   /// Waits until the commands of every dispatched action have run, including
   /// actions dispatched while waiting.
   ///
-  /// Effects are started but not awaited.
+  /// Follow-ups are started but not awaited.
   public func waitForPendingCommands() async {
     while let work = lastWork {
       await work.value
@@ -124,13 +124,13 @@ extension Store {
     }
   }
 
-  /// Starts effects that can produce follow-up actions.
+  /// Starts follow-ups that can produce actions.
   ///
-  /// - Parameter effects: The effects to run.
-  private func startEffects(_ effects: [Effect<R.Action>]) {
-    for effect in effects {
+  /// - Parameter followUps: The follow-ups to run.
+  private func startFollowUps(_ followUps: [FollowUp<R.Action>]) {
+    for followUp in followUps {
       Task {
-        if let action = await effect.run() {
+        if let action = await followUp.run() {
           dispatch(action)
         }
       }

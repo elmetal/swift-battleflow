@@ -59,9 +59,10 @@ struct StoreWorkOrderingTests {
   }
 
   @Test(
-    "Effects start after their reduction's commands and feed actions back", .timeLimit(.minutes(1)))
+    "Follow-ups start after their reduction's commands and feed actions back",
+    .timeLimit(.minutes(1)))
   @MainActor
-  func effectsFeedActionsBack() async throws {
+  func followUpsFeedActionsBack() async throws {
     struct Counter: Reducer {
       enum Action: Sendable, Equatable {
         case start
@@ -71,7 +72,7 @@ struct StoreWorkOrderingTests {
         switch action {
         case .start:
           return Reduction(
-            state: state + ["start"], commands: [BaseCommand(id: "c")], effects: [.send(.finish)])
+            state: state + ["start"], commands: [BaseCommand(id: "c")], followUps: [.send(.finish)])
         case .finish:
           return Reduction(state: state + ["finish"])
         }

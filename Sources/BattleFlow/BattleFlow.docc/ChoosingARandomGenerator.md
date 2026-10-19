@@ -93,12 +93,12 @@ struct ServerDealtRolls: BattleRandomGenerator {
 The synthesized `Equatable` conformance compares the remaining rolls, so equal
 generators produce equal rolls.
 
-### Effects Are Not Generators
+### Side Effects Are Not Generators
 
 `SystemRandomNumberGenerator` asks the operating system for new random bits on
 every call. It has no stored state, so the same battle state would produce
 different rolls each time. That breaks the reducer's purity, replays, and
-exact-value tests. It is an *effect*, not a value, which is why it isn't
+exact-value tests. It is a *side effect*, not a value, which is why it isn't
 `Equatable` and can't conform to ``BattleRandomGenerator``.
 
 Making it conform anyway, for example with an `Equatable` conformance that

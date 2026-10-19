@@ -21,21 +21,21 @@ public struct Reduction<State: Sendable, Action: Sendable>: Sendable {
   public let commands: [any Command]
 
   /// Asynchronous work that can produce follow-up actions.
-  public let effects: [Effect<Action>]
+  public let followUps: [FollowUp<Action>]
 
   /// Creates a reduction result.
   ///
   /// - Parameters:
   ///   - state: The transformed state.
   ///   - commands: One-way work for external systems.
-  ///   - effects: Asynchronous work that can produce follow-up actions.
+  ///   - followUps: Asynchronous work that can produce follow-up actions.
   public init(
     state: State,
     commands: [any Command] = [],
-    effects: [Effect<Action>] = []
+    followUps: [FollowUp<Action>] = []
   ) {
     self.state = state
     self.commands = commands
-    self.effects = effects
+    self.followUps = followUps
   }
 }

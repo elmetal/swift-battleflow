@@ -8,7 +8,7 @@
 /// Conforming types must be values. Two generators that compare equal must
 /// produce the same rolls, so the next rolls depend only on the stored
 /// properties. Sources that consult the outside world on every call, such as
-/// `SystemRandomNumberGenerator`, are effects rather than values; use them to
+/// `SystemRandomNumberGenerator`, are side effects rather than values; use them to
 /// create a seed instead. See <doc:ChoosingARandomGenerator>.
 public protocol BattleRandomGenerator: Sendable, Equatable {
   /// Returns the next roll and advances the generator.
