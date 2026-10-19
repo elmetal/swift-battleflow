@@ -1,3 +1,9 @@
+/// The result of reducing a ``CombatAction``: the new state and the
+/// ``CombatEvent`` values it produced.
+public typealias CombatReduction<Rules: CombatRules> = Reduction<
+  CombatState<Rules>, CombatAction<Rules>, CombatEvent<Rules>
+>
+
 /// A store that runs a battle by a game's ``CombatRules``.
 public typealias CombatStore<Rules: CombatRules> = Store<CombatReducer<Rules>>
 

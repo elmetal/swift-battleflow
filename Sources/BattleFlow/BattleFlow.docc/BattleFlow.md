@@ -17,8 +17,8 @@ splits the work between your game and the library:
   reactions, the outcome, and which turn system to use.
 - **BattleFlow runs the flow.** ``CombatReducer`` and ``CombatStore`` decide who
   may act and in which order, apply effects one at a time, handle turn
-  boundaries and computer-controlled combatants, and emit ``CombatEvent``
-  values for presentation.
+  boundaries and computer-controlled combatants, and deliver ``CombatEvent``
+  values to your presentation layer.
 
 Battles are deterministic: randomness comes from a ``BattleRandomGenerator``
 value held in ``CombatState``, so the same state and action always give the same
@@ -46,6 +46,7 @@ Release notes are published on
 
 - ``CombatStore``
 - ``CombatReducer``
+- ``CombatReduction``
 - ``CombatState``
 - ``CombatAction``
 - ``CombatEvent``
@@ -77,7 +78,4 @@ Release notes are published on
 - ``Store``
 - ``Reducer``
 - ``Reduction``
-- ``Command``
-- ``BaseCommand``
-- ``NoCommand``
-- ``Effect``
+- ``Ask``

@@ -2,6 +2,7 @@
 public struct CombatReducer<Rules: CombatRules>: Reducer {
   public typealias State = CombatState<Rules>
   public typealias Action = CombatAction<Rules>
+  public typealias Output = CombatEvent<Rules>
 
   /// The game's rules.
   public let rules: Rules
@@ -12,14 +13,14 @@ public struct CombatReducer<Rules: CombatRules>: Reducer {
 
   /// Reduces an action, then submits the rules' automatic commands for
   /// combatants that are awaiting one.
-  public func reduce(state: State, action: Action) -> Reduction<State, Action> {
+  public func reduce(state: State, action: Action) -> Reduction<State, Action, Output> {
     let reduction = reduceAction(state: state, action: action)
-    var progress = Progress(state: reduction.state, events: reduction.commands)
+    var progress = Progress(state: reduction.state, events: reduction.outputs)
     progress.submitAutomaticCommands(rules: rules)
     return progress.reduction
   }
 
-  private func reduceAction(state: State, action: Action) -> Reduction<State, Action> {
+  private func reduceAction(state: State, action: Action) -> Reduction<State, Action, Output> {
     switch action {
     case .start(let roster):
       guard state.phase == .preparation else {
@@ -61,7 +62,7 @@ public struct CombatReducer<Rules: CombatRules>: Reducer {
       }
       return Reduction(
         state: state.with(phase: .ended(outcome)),
-        commands: [CombatEvent<Rules>.ended(outcome)])
+        outputs: [.ended(outcome)])
     }
   }
 }
@@ -70,7 +71,7 @@ extension CombatReducer {
 
   private func reduceStart(
     state: State, roster: CombatRoster<Rules.Stats>
-  ) -> Reduction<State, Action> {
+  ) -> Reduction<State, Action, Output> {
     var turns = Rules.Turns()
     turns.begin(with: roster, rules: rules)
 
@@ -81,7 +82,7 @@ extension CombatReducer {
     return progress.reduction
   }
 
-  private func reducePerformNextAction(state: State) -> Reduction<State, Action> {
+  private func reducePerformNextAction(state: State) -> Reduction<State, Action, Output> {
     var turns = state.turns
     var random = state.random
     let next = turns.takeNextAction(in: state.roster, rules: rules, random: &random)
@@ -121,10 +122,10 @@ extension CombatReducer {
 /// A battle state together with the events emitted while it changes.
 private struct Progress<Rules: CombatRules> {
   var state: CombatState<Rules>
-  var events: [any Command] = []
+  var events: [CombatEvent<Rules>] = []
 
-  var reduction: Reduction<CombatState<Rules>, CombatAction<Rules>> {
-    Reduction(state: state, commands: events)
+  var reduction: CombatReduction<Rules> {
+    Reduction(state: state, outputs: events)
   }
 
   /// Applies effects one at a time, letting the rules react to each, until

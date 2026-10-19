@@ -96,7 +96,7 @@ struct CombatRoundBasedTests {
       #expect(reduction.state.phase == .ongoing)
       #expect(reduction.state.awaitingCommand == [hero, cleric, golem])
       #expect(reduction.state.turns.round == 1)
-      #expect(reduction.commands.contains { ($0 as? CombatEvent<Rules>) == .started })
+      #expect(reduction.outputs.contains(.started))
     }
 
     @Test(
@@ -157,12 +157,10 @@ struct CombatRoundBasedTests {
       #expect(reduction.state.currentActor == hero)
       #expect(reduction.state.roster[slime]?.hp == 4)
       #expect(
-        reduction.commands.contains {
-          ($0 as? CombatEvent<Rules>)
-            == .performed(
-              actor: hero, command: .attack(slime),
-              effects: [.damage(slime, amount: 8, isCritical: false)])
-        })
+        reduction.outputs.contains(
+          .performed(
+            actor: hero, command: .attack(slime),
+            effects: [.damage(slime, amount: 8, isCritical: false)])))
     }
 
     @Test("Damage varies with the variance roll")
@@ -218,7 +216,7 @@ struct CombatRoundBasedTests {
 
       #expect(reduction.state.currentActor == slime)
       #expect(reduction.state.random.remainingRolls == [0.42])
-      #expect(reduction.commands.contains { ($0 as? CombatEvent<Rules>) == .skipped(actor: slime) })
+      #expect(reduction.outputs.contains(.skipped(actor: slime)))
     }
 
     @Test("After the last action the next round awaits commands again")
@@ -253,7 +251,7 @@ struct CombatRoundBasedTests {
       let reduction = CombatReducer(rules: Rules()).reduce(state: ready, action: .performNextAction)
 
       #expect(reduction.state.outcome == .partyWins)
-      #expect(reduction.commands.contains { ($0 as? CombatEvent<Rules>) == .ended(.partyWins) })
+      #expect(reduction.outputs.contains(.ended(.partyWins)))
       #expect(reduce(reduction.state, .performNextAction) == reduction.state)
     }
 

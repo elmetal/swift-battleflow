@@ -58,7 +58,7 @@ struct EffectQueueTests {
     }
 
     func reduce(_ state: CombatState<Rules>, _ action: CombatAction<Rules>)
-      -> Reduction<CombatState<Rules>, CombatAction<Rules>>
+      -> CombatReduction<Rules>
     {
       CombatReducer(rules: Rules()).reduce(state: state, action: action)
     }
@@ -87,10 +87,8 @@ struct EffectQueueTests {
         ])
     }
 
-    func performed(_ reduction: Reduction<CombatState<Rules>, CombatAction<Rules>>) -> [Effect]? {
-      for case .performed(_, _, let effects) in reduction.commands.compactMap({
-        $0 as? CombatEvent<Rules>
-      }) {
+    func performed(_ reduction: CombatReduction<Rules>) -> [Effect]? {
+      for case .performed(_, _, let effects) in reduction.outputs {
         return effects
       }
       return nil
@@ -134,7 +132,7 @@ struct EffectQueueTests {
       #expect(slimeTurn.state.roster[slime]?.hp == 0)
       #expect(slimeTurn.state.scheduledEffects.isEmpty)
       #expect(
-        slimeTurn.commands.compactMap { $0 as? CombatEvent<Rules> }.contains(
+        slimeTurn.outputs.contains(
           .boundary(.turnEnded(slime), effects: [.collapse(slime)])))
     }
 

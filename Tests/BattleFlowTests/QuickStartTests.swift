@@ -68,8 +68,8 @@ struct QuickStartTests {
     let store = CombatStore(
       initialState: CombatState(random: SeededBattleRandomGenerator(seed: 42)),
       rules: Rules<SeededBattleRandomGenerator>())
-    var log: [String] = []
-    store.commandHandler = { event in log.append(event.id) }
+    var events: [CombatEvent<Rules<SeededBattleRandomGenerator>>] = []
+    store.outputHandler = { event in events.append(event) }
 
     store.start(
       CombatRoster(sides: [
@@ -79,10 +79,10 @@ struct QuickStartTests {
     store.submit(.attack(slime), by: hero)
     store.submit(.attack(hero), by: slime)
     store.performNextAction()
-    await store.waitForPendingCommands()
+    await store.waitForPendingOutputs()
 
     #expect(store.state.outcome == BattleOutcome("victory"))
-    #expect(log.contains("combat.ended.victory"))
+    #expect(events.last == .ended(BattleOutcome("victory")))
   }
 }
 

@@ -28,4 +28,11 @@ struct CombatStateTests {
     #expect(ended.phase == .ended(.partyLoses))
     #expect(ended.isEnded && !ended.isOngoing && ended.outcome == .partyLoses)
   }
+
+  @Test("Combatant IDs must not be empty")
+  func emptyCombatantID() async {
+    await #expect(processExitsWith: .failure) {
+      _ = CombatantID("")
+    }
+  }
 }

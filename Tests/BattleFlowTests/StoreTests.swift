@@ -9,10 +9,10 @@ struct StoreTests {
       case add(Int)
     }
 
-    func reduce(state: Int, action: Action) -> Reduction<Int, Action> {
+    func reduce(state: Int, action: Action) -> Reduction<Int, Action, String> {
       switch action {
       case .add(let amount):
-        Reduction(state: state + amount, commands: [BaseCommand(id: "added_\(amount)")])
+        Reduction(state: state + amount, outputs: ["added \(amount)"])
       }
     }
   }
@@ -39,5 +39,30 @@ struct StoreTests {
 
     #expect(store.state == 10)
     #expect(store.actionHistory.isEmpty)
+  }
+
+  @Test("Outputs reach the handler with their own type")
+  @MainActor
+  func typedOutputs() async {
+    let store = Store(initialState: 0, reducer: Tally())
+    var received: [String] = []
+    store.outputHandler = { output in received.append(output) }
+
+    store.dispatch([.add(1), .add(2)])
+    await store.waitForPendingOutputs()
+
+    #expect(received == ["added 1", "added 2"])
+  }
+
+  @Test("Without a handler, outputs are dropped")
+  @MainActor
+  func noHandler() async {
+    let store = Store(initialState: 0, reducer: Tally())
+
+    store.dispatch(.add(1))
+    await store.waitForPendingOutputs()
+
+    #expect(store.outputHandler == nil)
+    #expect(store.state == 1)
   }
 }
