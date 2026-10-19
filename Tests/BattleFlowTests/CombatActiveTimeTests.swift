@@ -137,7 +137,7 @@ struct CombatActiveTimeTests {
       let batTurn = CombatReducer(rules: Rules()).reduce(
         state: afterKnight, action: .performNextAction)
       #expect(
-        batTurn.commands.contains { ($0 as? CombatEvent<Rules>) == .skipped(actor: bat) })
+        batTurn.outputs.contains(.skipped(actor: bat)))
 
       let later = reduce(batTurn.state, .advanceTime(by: 5))
       #expect(later.turns.gauges[bat] == 0)
@@ -173,11 +173,9 @@ struct CombatActiveTimeTests {
 
       #expect(reduction.state.roster[wolf] == ready.roster[wolf])
       #expect(
-        reduction.commands.contains {
-          ($0 as? CombatEvent<Rules>)
-            == .performed(
-              actor: mage, command: .cast(.flame, on: .single(wolf)), effects: [.notEnoughMP])
-        })
+        reduction.outputs.contains(
+          .performed(
+            actor: mage, command: .cast(.flame, on: .single(wolf)), effects: [.notEnoughMP])))
     }
 
     @Test("Defeating every foe wins the battle")

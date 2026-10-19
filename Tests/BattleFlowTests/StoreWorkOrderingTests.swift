@@ -3,112 +3,108 @@ import Testing
 @testable import BattleFlow
 
 @MainActor
-private final class CommandRecorder {
-  var ids: [String] = []
-}
-
-/// Emits one command named after each action.
-private struct Echo: Reducer {
-  enum Action: String, Sendable, Equatable {
-    case first
-    case second
-  }
-
-  func reduce(state: Int, action: Action) -> Reduction<Int, Action> {
-    Reduction(state: state + 1, commands: [BaseCommand(id: action.rawValue)])
-  }
+private final class OutputRecorder {
+  var outputs: [String] = []
 }
 
 @Suite("Store work ordering")
 struct StoreWorkOrderingTests {
-  @Test("Commands run in dispatch order even when the handler suspends")
+  /// Outputs the name of each action.
+  struct Echo: Reducer {
+    enum Action: String, Sendable, Equatable {
+      case first
+      case second
+    }
+
+    func reduce(state: Int, action: Action) -> Reduction<Int, Action, String> {
+      Reduction(state: state + 1, outputs: [action.rawValue])
+    }
+  }
+
+  @Test("Outputs are delivered in dispatch order even when the handler suspends")
   @MainActor
-  func commandsRunInDispatchOrder() async throws {
+  func outputsInDispatchOrder() async {
     let store = Store(initialState: 0, reducer: Echo())
-    let recorder = CommandRecorder()
-    store.commandHandler = { command in
-      if command.id == "first" {
+    let recorder = OutputRecorder()
+    store.outputHandler = { output in
+      if output == "first" {
         try? await Task.sleep(for: .milliseconds(50))
       }
-      recorder.ids.append(command.id)
+      recorder.outputs.append(output)
     }
 
     store.dispatch([.first, .second])
-    await store.waitForPendingCommands()
+    await store.waitForPendingOutputs()
 
-    #expect(recorder.ids == ["first", "second"])
+    #expect(recorder.outputs == ["first", "second"])
   }
 
-  @Test("Waiting for pending commands includes commands dispatched while waiting")
+  @Test("Waiting for pending outputs includes outputs of actions dispatched while waiting")
   @MainActor
-  func waitIncludesLaterDispatches() async throws {
+  func waitIncludesLaterDispatches() async {
     let store = Store(initialState: 0, reducer: Echo())
-    let recorder = CommandRecorder()
-    store.commandHandler = { command in
+    let recorder = OutputRecorder()
+    store.outputHandler = { output in
       try? await Task.sleep(for: .milliseconds(10))
-      recorder.ids.append(command.id)
-      if command.id == "first" {
+      recorder.outputs.append(output)
+      if output == "first" {
         store.dispatch(.second)
       }
     }
 
     store.dispatch(.first)
-    await store.waitForPendingCommands()
+    await store.waitForPendingOutputs()
 
-    #expect(recorder.ids == ["first", "second"])
+    #expect(recorder.outputs == ["first", "second"])
+  }
+
+  @Test("Outputs of one reduction are delivered in the order they were emitted")
+  @MainActor
+  func outputsKeepEmissionOrder() async {
+    struct Emitter: Reducer {
+      func reduce(state: Int, action: Int) -> Reduction<Int, Int, String> {
+        Reduction(state: state, outputs: (0..<50).map { "o\($0)" })
+      }
+    }
+    let store = Store(initialState: 0, reducer: Emitter())
+    let recorder = OutputRecorder()
+    store.outputHandler = { recorder.outputs.append($0) }
+
+    store.dispatch(0)
+    await store.waitForPendingOutputs()
+
+    #expect(recorder.outputs == (0..<50).map { "o\($0)" })
   }
 
   @Test(
-    "Effects start after their reduction's commands and feed actions back", .timeLimit(.minutes(1)))
+    "Asks start after their reduction's outputs and their answers are dispatched",
+    .timeLimit(.minutes(1)))
   @MainActor
-  func effectsFeedActionsBack() async throws {
+  func asksFeedActionsBack() async {
     struct Counter: Reducer {
       enum Action: Sendable, Equatable {
         case start
         case finish
       }
-      func reduce(state: [String], action: Action) -> Reduction<[String], Action> {
+      func reduce(state: [String], action: Action) -> Reduction<[String], Action, String> {
         switch action {
         case .start:
-          return Reduction(
-            state: state + ["start"], commands: [BaseCommand(id: "c")], effects: [.send(.finish)])
+          Reduction(state: state + ["start"], outputs: ["started"], asks: [.answer(.finish)])
         case .finish:
-          return Reduction(state: state + ["finish"])
+          Reduction(state: state + ["finish"])
         }
       }
     }
 
     let store = Store(initialState: [], reducer: Counter())
-    let recorder = CommandRecorder()
-    store.commandHandler = { command in recorder.ids.append(command.id) }
+    let recorder = OutputRecorder()
+    store.outputHandler = { recorder.outputs.append($0) }
 
     store.dispatch(.start)
-    await store.waitForPendingCommands()
+    await store.waitForPendingOutputs()
     while store.state.count < 2 { await Task.yield() }
 
-    #expect(recorder.ids == ["c"])
+    #expect(recorder.outputs == ["started"])
     #expect(store.state == ["start", "finish"])
-  }
-
-  @Test("Commands with the same priority run in the order they were emitted")
-  @MainActor
-  func equalPriorityCommandsKeepOrder() async throws {
-    struct Emitter: Reducer {
-      func reduce(state: Int, action: Int) -> Reduction<Int, Int> {
-        let ids = (0..<50).map { "c\($0)" }
-        return Reduction(
-          state: state,
-          commands: [BaseCommand(id: "first", priority: 2)]
-            + ids.map { BaseCommand(id: $0, priority: 1) })
-      }
-    }
-    let store = Store(initialState: 0, reducer: Emitter())
-    let recorder = CommandRecorder()
-    store.commandHandler = { recorder.ids.append($0.id) }
-
-    store.dispatch(0)
-    await store.waitForPendingCommands()
-
-    #expect(recorder.ids == ["first"] + (0..<50).map { "c\($0)" })
   }
 }

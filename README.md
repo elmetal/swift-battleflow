@@ -114,7 +114,7 @@ let slime = CombatantID("slime")
 let store = CombatStore(
   initialState: CombatState(random: SeededBattleRandomGenerator(seed: 42)),
   rules: Rules<SeededBattleRandomGenerator>())
-store.commandHandler = { event in print(event.id) }  // Present events here.
+store.outputHandler = { event in print(event) }  // Present CombatEvent values here.
 
 store.start(
   CombatRoster(sides: [
@@ -124,7 +124,7 @@ store.start(
 store.submit(.attack(slime), by: hero)
 store.submit(.attack(hero), by: slime)
 store.performNextAction()
-await store.waitForPendingCommands()  // Events are delivered asynchronously.
+await store.waitForPendingOutputs()  // Events are delivered asynchronously.
 
 print(store.state.outcome == BattleOutcome("victory"))  // true
 ```

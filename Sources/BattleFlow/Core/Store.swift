@@ -2,8 +2,8 @@ import Observation
 
 /// The central hub of a state-store feature.
 ///
-/// A store owns state, applies actions through a reducer, executes commands, and
-/// starts asynchronous effects that can send follow-up actions.
+/// A store owns state, applies actions through a reducer, delivers the
+/// reducer's outputs, and runs its asks, dispatching their answers.
 @Observable
 @MainActor
 public final class Store<R: Reducer> {
@@ -11,8 +11,10 @@ public final class Store<R: Reducer> {
   /// The current state.
   public private(set) var state: R.State
 
-  /// An optional handler used to execute commands.
-  public var commandHandler: ((any Command) async -> Void)?
+  /// Receives the reducer's outputs, in the order they were emitted.
+  ///
+  /// Without a handler, outputs are dropped.
+  public var outputHandler: ((R.Output) async -> Void)?
 
   /// The reducer that encapsulates state transition logic.
   private let reducer: R
@@ -22,8 +24,8 @@ public final class Store<R: Reducer> {
 
   /// The most recently enqueued unit of work.
   ///
-  /// Each dispatch chains its work after this task, so commands run in
-  /// dispatch order even when the command handler suspends.
+  /// Each dispatch chains its work after this task, so outputs are delivered
+  /// in dispatch order even when the output handler suspends.
   @ObservationIgnored private var lastWork: Task<Void, Never>?
 
   /// Creates a store using the provided initial state and reducer.
@@ -38,10 +40,10 @@ public final class Store<R: Reducer> {
 
   /// Dispatches a single action synchronously.
   ///
-  /// The state updates immediately. The reduction's commands run after the
-  /// commands of every earlier dispatch, and its effects start once those
-  /// commands finish. Effects run concurrently, so their follow-up actions are
-  /// dispatched in completion order.
+  /// The state updates immediately. The reduction's outputs are delivered in
+  /// order after the outputs of every earlier dispatch, and its asks start
+  /// once those outputs have been handled. Asks run concurrently, so their
+  /// answers are dispatched in completion order.
   ///
   /// - Parameter action: The action to process.
   public func dispatch(_ action: R.Action) {
@@ -53,16 +55,16 @@ public final class Store<R: Reducer> {
     let previousWork = lastWork
     lastWork = Task {
       await previousWork?.value
-      await executeCommands(reduction.commands)
-      startEffects(reduction.effects)
+      await deliver(reduction.outputs)
+      start(reduction.asks)
     }
   }
 
-  /// Waits until the commands of every dispatched action have run, including
-  /// actions dispatched while waiting.
+  /// Waits until the outputs of every dispatched action have been handled,
+  /// including actions dispatched while waiting.
   ///
-  /// Effects are started but not awaited.
-  public func waitForPendingCommands() async {
+  /// Asks are started but not awaited.
+  public func waitForPendingOutputs() async {
     while let work = lastWork {
       await work.value
       if lastWork == work {
@@ -98,39 +100,21 @@ public final class Store<R: Reducer> {
 
 extension Store {
 
-  /// Executes the supplied commands in priority order.
-  ///
-  /// - Parameter commands: The pending commands to run.
-  private func executeCommands(_ commands: [any Command]) async {
-    // Higher priority first; commands with the same priority keep the order
-    // they were emitted in.
-    let sortedCommands = commands.enumerated()
-      .sorted { ($0.element.priority, $1.offset) > ($1.element.priority, $0.offset) }
-      .map(\.element)
-
-    for command in sortedCommands {
-      await executeCommand(command)
+  /// Delivers outputs to the handler, in order.
+  private func deliver(_ outputs: [R.Output]) async {
+    guard let outputHandler else {
+      return
+    }
+    for output in outputs {
+      await outputHandler(output)
     }
   }
 
-  /// Executes a single command.
-  ///
-  /// - Parameter command: The command to run.
-  private func executeCommand(_ command: any Command) async {
-    if let handler = commandHandler {
-      await handler(command)
-    } else {
-      print("🎬 Command executed: \(command.id) (priority: \(command.priority))")
-    }
-  }
-
-  /// Starts effects that can produce follow-up actions.
-  ///
-  /// - Parameter effects: The effects to run.
-  private func startEffects(_ effects: [Effect<R.Action>]) {
-    for effect in effects {
+  /// Starts asks, dispatching each answer when it arrives.
+  private func start(_ asks: [Ask<R.Action>]) {
+    for ask in asks {
       Task {
-        if let action = await effect.run() {
+        if let action = await ask.run() {
           dispatch(action)
         }
       }

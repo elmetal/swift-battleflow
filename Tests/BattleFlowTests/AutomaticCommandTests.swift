@@ -26,7 +26,7 @@ struct AutomaticCommandTests {
 
     func start(
       _ rules: RoundRules, rolls: [Double]
-    ) -> Reduction<CombatState<RoundRules>, CombatAction<RoundRules>> {
+    ) -> CombatReduction<RoundRules> {
       CombatReducer(rules: rules).reduce(
         state: CombatState(random: ScriptedBattleRandomGenerator(rolls)), action: .start(roster()))
     }
@@ -39,7 +39,7 @@ struct AutomaticCommandTests {
       #expect(reduction.state.awaitingCommand == [hero, cleric])
       #expect(reduction.state.turns.commands == [golem: .attack(hero), slime: .attack(cleric)])
       #expect(
-        Array(events(reduction).suffix(2)) == [
+        Array(reduction.outputs.suffix(2)) == [
           .submittedAutomatically(actor: golem, command: .attack(hero)),
           .submittedAutomatically(actor: slime, command: .attack(cleric)),
         ])
@@ -113,7 +113,7 @@ struct AutomaticCommandTests {
       // The wolf picks the ally with the lowest HP.
       #expect(reduction.state.turns.pending == [.init(actor: wolf, command: .attack(mage))])
       #expect(reduction.state.awaitingCommand.isEmpty)
-      #expect(events(reduction) == [.submittedAutomatically(actor: wolf, command: .attack(mage))])
+      #expect(reduction.outputs == [.submittedAutomatically(actor: wolf, command: .attack(mage))])
     }
   }
 
@@ -129,11 +129,6 @@ struct AutomaticCommandTests {
       }
     }
   }
-}
-
-private func events<R>(_ reduction: Reduction<CombatState<R>, CombatAction<R>>) -> [CombatEvent<R>]
-{
-  reduction.commands.compactMap { $0 as? CombatEvent<R> }
 }
 
 // MARK: - A Turn System That Breaks the Contract

@@ -29,8 +29,9 @@ public enum CombatAction<Rules: CombatRules>: Sendable, Equatable {
 
 /// What happened in a battle, for presentation.
 ///
-/// The combat reducer emits these as commands, in the order they happened.
-public enum CombatEvent<Rules: CombatRules>: Command {
+/// These are the combat reducer's outputs, delivered in the order they
+/// happened.
+public enum CombatEvent<Rules: CombatRules>: Sendable, Equatable {
   /// The battle started.
   case started
 
@@ -48,24 +49,4 @@ public enum CombatEvent<Rules: CombatRules>: Command {
 
   /// The battle ended.
   case ended(BattleOutcome)
-
-  public var id: String {
-    switch self {
-    case .started: "combat.started"
-    case .submittedAutomatically(let actor, _): "combat.submitted.\(actor.value)"
-    case .performed(let actor, _, _): "combat.performed.\(actor.value)"
-    case .skipped(let actor): "combat.skipped.\(actor.value)"
-    case .boundary: "combat.boundary"
-    case .ended(let outcome): "combat.ended.\(outcome.value)"
-    }
-  }
-
-  /// Events in one reduction run in the order they happened: an action
-  /// before the end of the battle it caused.
-  public var priority: Int {
-    switch self {
-    case .ended: 0
-    default: 1
-    }
-  }
 }

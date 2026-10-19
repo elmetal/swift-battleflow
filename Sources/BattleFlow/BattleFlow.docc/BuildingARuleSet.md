@@ -364,9 +364,26 @@ store.performNextAction()
 ```
 
 The combat layer ignores actions that don't fit the current state, such as a
-command from a combatant that isn't awaiting one. It emits ``CombatEvent``
-values as commands, in order, so your presentation layer can animate exactly
-what happened, including the game-defined effects of each command.
+command from a combatant that isn't awaiting one. It delivers ``CombatEvent``
+values, in order, to ``Store/outputHandler``, so your presentation layer can
+animate exactly what happened, including the game-defined effects of each
+command:
+
+```swift
+store.outputHandler = { event in
+  switch event {
+  case .performed(let actor, _, let effects):
+    await animate(effects, by: actor)
+  case .ended(let outcome):
+    await showResult(outcome)
+  default:
+    break
+  }
+}
+```
+
+The handler can suspend, for example while an animation plays; later events
+wait for it, so they always arrive in the order they happened.
 
 To test your rules, use ``ScriptedBattleRandomGenerator`` to choose the rolls,
 for example to force a critical hit.

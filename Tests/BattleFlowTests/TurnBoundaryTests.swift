@@ -20,7 +20,7 @@ private func roster(slimeHP: Int = 30) -> CombatRoster<StatusSampleStats> {
 }
 
 private func reduce(_ state: CombatState<Rules>, _ action: CombatAction<Rules>)
-  -> Reduction<CombatState<Rules>, CombatAction<Rules>>
+  -> CombatReduction<Rules>
 {
   CombatReducer(rules: Rules()).reduce(state: state, action: action)
 }
@@ -45,10 +45,6 @@ private func round(
   ]
 }
 
-private func events(_ reduction: Reduction<CombatState<Rules>, CombatAction<Rules>>) -> [Event] {
-  reduction.commands.compactMap { $0 as? Event }
-}
-
 @Suite("Turn boundaries")
 struct TurnBoundaryTests {
   @Suite("Order")
@@ -58,7 +54,7 @@ struct TurnBoundaryTests {
       let reduction = reduce(
         CombatState(random: ScriptedBattleRandomGenerator([])), .start(roster()))
 
-      #expect(events(reduction) == [.started, .boundary(.roundStarted(1), effects: [])])
+      #expect(reduction.outputs == [.started, .boundary(.roundStarted(1), effects: [])])
     }
 
     @Test("Each action is wrapped in its actor's turn start and turn end")
@@ -66,7 +62,7 @@ struct TurnBoundaryTests {
       let state = reduce(started(), round(hero: .attack(slime), witch: .attack(slime)))
 
       #expect(
-        events(reduce(state, .performNextAction)) == [
+        reduce(state, .performNextAction).outputs == [
           .boundary(.turnStarted(hero), effects: []),
           .performed(actor: hero, command: .attack(slime), effects: [.damage(slime, amount: 5)]),
           .boundary(.turnEnded(hero), effects: []),
@@ -81,7 +77,7 @@ struct TurnBoundaryTests {
           + Array(repeating: .performNextAction, count: 3))
 
       #expect(
-        events(reduce(state, .performNextAction)) == [
+        reduce(state, .performNextAction).outputs == [
           .boundary(.roundEnded(1), effects: []), .boundary(.roundStarted(2), effects: []),
         ])
     }
@@ -101,7 +97,7 @@ struct TurnBoundaryTests {
 
       #expect(slimeTurn.state.roster[slime]?.hp == 30 - 5 - 4)
       #expect(
-        events(slimeTurn).last == .boundary(.turnEnded(slime), effects: [.damage(slime, amount: 4)])
+        slimeTurn.outputs.last == .boundary(.turnEnded(slime), effects: [.damage(slime, amount: 4)])
       )
     }
 
@@ -115,7 +111,7 @@ struct TurnBoundaryTests {
       let slimeTurn = reduce(state, .performNextAction)
 
       #expect(slimeTurn.state.outcome == .partyWins)
-      #expect(events(slimeTurn).last == .ended(.partyWins))
+      #expect(slimeTurn.outputs.last == .ended(.partyWins))
     }
 
     @Test("Sleep keeps a combatant from acting until it wears off at round end")
@@ -147,7 +143,7 @@ struct TurnBoundaryTests {
           + [.performNextAction, .performNextAction])
 
       #expect(
-        events(reduce(state, .performNextAction)) == [
+        reduce(state, .performNextAction).outputs == [
           .boundary(.turnStarted(slime), effects: []), .skipped(actor: slime),
         ])
     }
@@ -172,8 +168,7 @@ struct TurnBoundaryTests {
         reducer.reduce(state: $0, action: $1).state
       }
 
-      let events = reducer.reduce(state: ready, action: .performNextAction).commands
-        .compactMap { $0 as? CombatEvent<GaugeRules> }
+      let events = reducer.reduce(state: ready, action: .performNextAction).outputs
 
       #expect(
         events == [

@@ -16,6 +16,7 @@ public struct CombatantID: Hashable, Sendable {
   public let value: String
 
   public init(_ value: String) {
+    precondition(!value.isEmpty, "CombatantID value must not be empty.")
     self.value = value
   }
 }
