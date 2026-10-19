@@ -293,6 +293,11 @@ struct MyRules<Generator: BattleRandomGenerator>: RoundBasedRules {
 }
 ```
 
+Until the last command of a round is submitted, a combatant can take its
+command back with ``CombatAction/withdraw(by:)``, for example when the player
+goes back in the command menu, and then submit another one.
+``CombatState/withdrawableCommands`` lists who can withdraw.
+
 #### Active-Time Turns
 
 With ``ActiveTimeTurns``, every combatant fills a gauge over time and submits a
@@ -324,6 +329,9 @@ from the rules in a protocol that refines ``CombatRules``, and implement:
 - ``TurnSystem/record(_:by:in:rules:random:)``: store a submitted command.
 - ``TurnSystem/takeNextAction(in:rules:random:)``: hand out the next command to
   perform.
+- Optionally ``TurnSystem/withdrawableCommands(in:)`` and
+  ``TurnSystem/withdrawCommand(of:in:rules:)``, to let combatants take back a
+  command.
 - Optionally ``TurnSystem/begin(with:rules:)``,
   ``TurnSystem/didPerform(_:by:in:rules:)``, and
   ``TurnSystem/advanceTime(by:in:rules:)``.
@@ -360,6 +368,8 @@ let store = CombatStore(
 
 store.start(roster)
 store.submit(.attack(slime), by: hero)
+store.withdraw(by: hero)  // The player went back; the hero chooses again.
+store.submit(.attackGroup(.monsters), by: hero)
 store.performNextAction()
 ```
 

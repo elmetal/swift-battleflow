@@ -25,6 +25,12 @@ extension Store {
     dispatch(.submit(command, by: actor))
   }
 
+  /// Withdraws a combatant's submitted command, so that it can submit
+  /// another one.
+  public func withdraw<Rules>(by actor: CombatantID) where R == CombatReducer<Rules> {
+    dispatch(.withdraw(by: actor))
+  }
+
   /// Performs the next command the turn system has ready.
   public func performNextAction<Rules>() where R == CombatReducer<Rules> {
     dispatch(.performNextAction)

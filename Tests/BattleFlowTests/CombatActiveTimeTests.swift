@@ -83,6 +83,14 @@ struct CombatActiveTimeTests {
       #expect(submitted.turns.pending == [.init(actor: bat, command: .attack(knight))])
     }
 
+    @Test("Submitted commands cannot be withdrawn")
+    func withdrawIsIgnored() {
+      let submitted = reduce(started(), .advanceTime(by: 1), .submit(.attack(knight), by: bat))
+
+      #expect(submitted.withdrawableCommands.isEmpty)
+      #expect(reduce(submitted, .withdraw(by: bat)) == submitted)
+    }
+
     @Test("Submitted commands run first come, first served, and reset the actor's gauge")
     func firstComeFirstServed() {
       // Knight and bat are ready; the knight submits first.

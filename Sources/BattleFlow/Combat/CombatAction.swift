@@ -11,6 +11,14 @@ public enum CombatAction<Rules: CombatRules>: Sendable, Equatable {
   /// awaiting a command.
   case submit(Rules.Command, by: CombatantID)
 
+  /// Withdraws a combatant's submitted command, so that it can submit
+  /// another one.
+  ///
+  /// Ignored unless the battle is ongoing and the turn system lets the
+  /// combatant withdraw its command. The rules choose again for a
+  /// computer-controlled combatant.
+  case withdraw(by: CombatantID)
+
   /// Performs the next command the turn system has ready.
   ///
   /// Ignored unless the battle is ongoing.
