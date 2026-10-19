@@ -16,6 +16,9 @@ public protocol RoundBasedRules: CombatRules {
 /// A turn system in which every combatant that can act submits a command,
 /// then the round's commands run by priority and initiative.
 ///
+/// Until the last command of a round is submitted, a combatant may withdraw
+/// its command with ``CombatAction/withdraw(by:)`` and submit another one.
+///
 /// After the last command of a round, the next ``CombatAction/performNextAction``
 /// starts the next round.
 public struct RoundBasedTurns<Rules: RoundBasedRules>: TurnSystem {
@@ -83,6 +86,21 @@ public struct RoundBasedTurns<Rules: RoundBasedRules>: TurnSystem {
       (lhs.priority, lhs.initiative, rhs.id.value) > (rhs.priority, rhs.initiative, lhs.id.value)
     }.map(\.id)
     isExecuting = true
+  }
+
+  /// The combatants that submitted a command, while the round is not yet
+  /// executing.
+  public func withdrawableCommands(in roster: CombatRoster<Rules.Stats>) -> Set<CombatantID> {
+    isExecuting ? [] : Set(commands.keys)
+  }
+
+  public mutating func withdrawCommand(
+    of actor: CombatantID, in roster: CombatRoster<Rules.Stats>, rules: Rules
+  ) {
+    precondition(
+      withdrawableCommands(in: roster).contains(actor), "Only a submitted command can be withdrawn."
+    )
+    commands[actor] = nil
   }
 
   public mutating func takeNextAction(

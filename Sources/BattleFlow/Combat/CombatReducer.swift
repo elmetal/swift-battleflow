@@ -39,6 +39,20 @@ public struct CombatReducer<Rules: CombatRules>: Reducer {
       progress.reachBoundaries(rules: rules)
       return progress.reduction
 
+    case .withdraw(let actor):
+      guard state.withdrawableCommands.contains(actor) else {
+        return Reduction(state: state)
+      }
+      var turns = state.turns
+      turns.withdrawCommand(of: actor, in: state.roster, rules: rules)
+      let withdrawn = state.with(turns: turns)
+      precondition(
+        withdrawn.awaitingCommand.contains(actor),
+        "A turn system must await a combatant again once its command is withdrawn.")
+      var progress = Progress(state: withdrawn)
+      progress.reachBoundaries(rules: rules)
+      return progress.reduction
+
     case .performNextAction:
       guard state.isOngoing else {
         return Reduction(state: state)

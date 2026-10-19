@@ -145,6 +145,77 @@ struct CombatRoundBasedTests {
 
   }
 
+  @Suite("Withdrawing")
+  struct Withdrawing {
+    @Test("A submitted command can be withdrawn while others are still choosing")
+    func withdrawAwaitsAgain() {
+      let submitted = reduce(started(rolls: evenInitiative), .submit(.attack(slime), by: hero))
+      #expect(submitted.withdrawableCommands == [hero])
+
+      let withdrawn = reduce(submitted, .withdraw(by: hero))
+
+      #expect(withdrawn.turns.commands[hero] == nil)
+      #expect(withdrawn.awaitingCommand == [hero, cleric, slime, golem])
+      #expect(withdrawn.withdrawableCommands.isEmpty)
+    }
+
+    @Test("A withdrawn command is replaced by the next submission")
+    func resubmitReplaces() {
+      let state = reduce(
+        started(rolls: evenInitiative),
+        .submit(.attack(slime), by: hero),
+        .withdraw(by: hero),
+        .submit(.attack(golem), by: hero),
+        .submit(.attack(golem), by: cleric),
+        .submit(.attack(hero), by: slime),
+        .submit(.attack(cleric), by: golem))
+
+      #expect(state.turns.isExecuting)
+      #expect(state.turns.commands[hero] == .attack(golem))
+    }
+
+    @Test(
+      "Withdrawing is ignored unless the combatant has a command to withdraw",
+      arguments: ["not submitted", "unknown", "executing"])
+    func withdrawPreconditions(scenario: String) {
+      var state = reduce(started(rolls: evenInitiative), .submit(.attack(slime), by: hero))
+      var actor = cleric
+      switch scenario {
+      case "unknown":
+        actor = CombatantID("ghost")
+      case "executing":
+        state = scheduled(rolls: evenInitiative)
+        actor = hero
+      default:
+        break
+      }
+
+      #expect(reduce(state, .withdraw(by: actor)) == state)
+    }
+
+    @Test("Withdrawing is ignored before the battle starts and after it ends")
+    func withdrawRequiresOngoingBattle() {
+      let preparation = CombatState<Rules>(random: ScriptedBattleRandomGenerator([]))
+      let ended = reduce(
+        started(rolls: evenInitiative), .submit(.attack(slime), by: hero), .end(.partyLoses))
+
+      #expect(preparation.withdrawableCommands.isEmpty)
+      #expect(ended.withdrawableCommands.isEmpty)
+      #expect(reduce(ended, .withdraw(by: hero)) == ended)
+    }
+
+    @Test("A computer-controlled combatant whose command is withdrawn chooses again")
+    func automaticCombatantChoosesAgain() {
+      // Opponents of the slime in ID order: cleric, hero.
+      let rules = Rules(automaticSides: [.monsters])
+      let state = reduce(
+        started(rolls: [0.9, 0.9, 0.1], rules: rules), .withdraw(by: slime), rules: rules)
+
+      #expect(state.turns.commands[slime] == .attack(cleric))
+      #expect(state.awaitingCommand == [hero, cleric])
+    }
+  }
+
   @Suite("Performing")
   struct Performing {
     @Test("Performing resolves the command through the game's rules")
@@ -278,12 +349,15 @@ struct CombatRoundBasedTests {
       store.start(roster())
       store.submit(.attack(slime), by: hero)
       store.submit(.attack(golem), by: cleric)
+      store.submit(.attack(cleric), by: slime)
+      store.withdraw(by: slime)
       store.submit(.attack(hero), by: slime)
       store.submit(.attack(cleric), by: golem)
       store.performNextAction()
 
       #expect(store.state.roster[slime]?.hp == 4)
-      #expect(store.actionHistory.count == 6)
+      #expect(store.state.turns.commands[slime] == .attack(hero))
+      #expect(store.actionHistory.count == 8)
     }
   }
 }

@@ -77,6 +77,14 @@ public struct CombatState<Rules: CombatRules>: Sendable, Equatable {
     return turns.awaitingCommand(in: roster).intersection(roster.actors)
   }
 
+  /// The combatants whose submitted command may be withdrawn now.
+  public var withdrawableCommands: Set<CombatantID> {
+    guard isOngoing else {
+      return []
+    }
+    return turns.withdrawableCommands(in: roster).intersection(roster.actors)
+  }
+
   func with(
     phase: BattlePhase? = nil, roster: CombatRoster<Rules.Stats>? = nil,
     currentActor: CombatantID?? = nil, turns: Rules.Turns? = nil, random: Rules.Generator? = nil,

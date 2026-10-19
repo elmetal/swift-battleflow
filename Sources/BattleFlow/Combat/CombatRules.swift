@@ -143,6 +143,19 @@ public protocol TurnSystem: Sendable, Equatable {
     _ command: Rules.Command, by actor: CombatantID, in roster: CombatRoster<Rules.Stats>,
     rules: Rules, random: inout Rules.Generator)
 
+  /// Returns the combatants whose recorded command may be withdrawn now.
+  ///
+  /// The default returns no combatants, so commands cannot be withdrawn.
+  func withdrawableCommands(in roster: CombatRoster<Rules.Stats>) -> Set<CombatantID>
+
+  /// Withdraws the recorded command of a combatant returned by
+  /// ``withdrawableCommands(in:)``.
+  ///
+  /// Afterwards the combatant must be awaiting a command again, so that it can
+  /// submit another one.
+  mutating func withdrawCommand(
+    of actor: CombatantID, in roster: CombatRoster<Rules.Stats>, rules: Rules)
+
   /// Removes and returns the next command to perform, or returns `nil` when
   /// none is ready.
   ///
@@ -187,6 +200,16 @@ extension TurnSystem where Boundary == Never {
 
 extension TurnSystem {
   public mutating func begin(with roster: CombatRoster<Rules.Stats>, rules: Rules) {}
+
+  public func withdrawableCommands(in roster: CombatRoster<Rules.Stats>) -> Set<CombatantID> {
+    []
+  }
+
+  public mutating func withdrawCommand(
+    of actor: CombatantID, in roster: CombatRoster<Rules.Stats>, rules: Rules
+  ) {
+    preconditionFailure("This turn system does not let combatants withdraw commands.")
+  }
 
   public mutating func didPerform(
     _ effects: [Rules.Effect], by actor: CombatantID, in roster: CombatRoster<Rules.Stats>,
